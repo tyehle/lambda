@@ -3,19 +3,21 @@ import Test.Tasty.HUnit
 
 import ParserSpec
 import HL.ParserSpec
+import HL.CompilerSpec
 
 import Node
-import Lambda (interp)
+import Lambda (interp, Result(..))
 
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
   [ beta
   , parserTests
   , hlParserTests
+  , compilerTests
   ]
 
-nid :: String -> Node
-nid arg = Lambda arg $ Ref arg
+nid :: String -> Result
+nid arg = Clos [] arg $ Ref arg
 
 
 beta :: TestTree

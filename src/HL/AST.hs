@@ -2,32 +2,32 @@ module HL.AST where
 
 data Exp = Var String
 
-         | Tr
-         | Fls
+         | VTrue
+         | VFalse
          | If Exp Exp Exp
          | And Exp Exp
          | Or Exp Exp
 
-         | Num Integer
+         | Num Int
          | Test0 Exp
          | Minus Exp Exp
          | Plus Exp Exp
          | Mult Exp Exp
          | Eq Exp Exp
 
-         | Lambda Lam
+         | Lambda [String] Exp
          | Let [(String, Exp)] Exp
-         | Letrec (String, Lam) Exp
+         | Letrec (String, ([String], Exp)) Exp
 
          | Cons Exp Exp
          | Head Exp
          | Tail Exp
          | TestPair Exp
          | TestNull Exp
-         | EmptyList
+         | VEmpty
 
-         | App Exp Exp
+         | Application Exp Exp
          deriving (Show)
 
 
-data Lam = Lam [String] Exp deriving (Show)
+-- data Lam = Lam [String] Exp deriving (Show)

@@ -37,9 +37,9 @@ parenTests = testGroup "Paren Tests"
 
 lambdaTests :: TestTree
 lambdaTests = testGroup "Lambda Tests"
-  [ test 1 "\\x.x" $ Right $ Lambda "x" $ Ref "x"
-  , test 2 " \\ x . x " $ Right $ Lambda "x" $ Ref "x"
-  , test 3 "\\x y. x y" $ Right $ Lambda "x" $ Lambda "y" $ App (Ref "x") (Ref "y")
+  [ test 1 "\\x.x" $ Right $ Lam "x" $ Ref "x"
+  , test 2 " \\ x . x " $ Right $ Lam "x" $ Ref "x"
+  , test 3 "\\x y. x y" $ Right $ Lam "x" $ Lam "y" $ App (Ref "x") (Ref "y")
   ]
 
 identifierTests :: TestTree

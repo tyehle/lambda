@@ -26,7 +26,7 @@ lambda = do
   args <- sepEndBy1 identifier spaces
   _ <- char '.'
   body <- factor
-  return $ foldr Lambda body args
+  return $ foldr Lam body args
 
 identifier :: Parsec String () String
 identifier = (:) <$> lower <*> many alphaNum

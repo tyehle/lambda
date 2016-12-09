@@ -14,8 +14,8 @@ programP = expressionP <* eof
 
 expressionP :: Parser Exp
 expressionP =  Var <$> try identifierP
-           <|> (word "#t" *> return Tr)
-           <|> (word "#f" *> return Fls)
+           <|> (word "#t" *> return VTrue)
+           <|> (word "#f" *> return VFalse)
            <|> try ifP
            <|> try (fn2 "and" And)
            <|> try (fn2 "or" Or)
@@ -27,7 +27,7 @@ expressionP =  Var <$> try identifierP
            <|> try (fn2 "*" Mult)
            <|> try (fn2 "=" Eq)
 
-           <|> try (Lambda <$> lamP)
+           <|> try lamP
            <|> try letP
            <|> try letrecP
 
@@ -36,7 +36,7 @@ expressionP =  Var <$> try identifierP
            <|> try (fn1 "tail" Tail)
            <|> try (fn1 "pair?" TestPair)
            <|> try (fn1 "null?" TestNull)
-           <|> try (word "()" *> return EmptyList)
+           <|> try (word "()" *> return VEmpty)
            <|> try appP
 
 ifP :: Parser Exp
@@ -47,18 +47,18 @@ ifP = inParens $ do
   f <- expressionP
   return $ If c t f
 
-lamP :: Parser Lam
+lamP :: Parser Exp
 lamP = inParens $ do
   _ <- word "lambda" <|> word "λ"
   whitespace
   args <- inParens (sepEndBy1 identifierP whitespace)
   whitespace
   body <- expressionP
-  return $ Lam args body
+  return $ Lambda args body
 
 letP :: Parser Exp
 letP = inParens $ do
-  _ <- word ""
+  _ <- word "let"
   whitespace
   bindings <- inParens (sepEndBy1 (inParens ((,) <$> (identifierP <* whitespace) <*> expressionP)) whitespace)
   whitespace
@@ -68,17 +68,17 @@ letrecP :: Parser Exp
 letrecP = inParens $ do
   _ <- word "letrec"
   whitespace
-  binding <- inParens ((,) <$> (identifierP <* whitespace) <*> lamP)
+  (name, Lambda args fn) <- inParens ((,) <$> (identifierP <* whitespace) <*> lamP)
   whitespace
   body <- expressionP
-  return $ Letrec binding body
+  return $ Letrec (name, (args, fn)) body
 
 appP :: Parser Exp
 appP = inParens $ do
   f <- expressionP
   whitespace
   args <- sepEndBy1 expressionP whitespace
-  return $ foldl App f args
+  return $ foldl Application f args
 
 
 fn1 :: String -> (Exp -> Exp) -> Parser Exp

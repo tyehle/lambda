@@ -1,61 +1,57 @@
 module HL.Compiler where
 
 import HL.AST
-import Node (Node)
-import qualified Node as N
+import Node
 
 compile :: Exp -> Node
-compile (Var name) = N.Ref name
+compile (Var name) = Ref name
 
-compile Tr = true
-compile Fls = false
+compile VTrue = true
+compile VFalse = false
 -- (c (λy.t) (λy.f)) λx.x
 -- make sure to test an exception in the clauses
-compile (If cond t f) = (compile cond <> l "y" (compile t) <> l "y" (compile f)) <> l "x" (r "x")
-compile (And a b) = compile $ If a b Fls
-compile (Or a b) = compile $ If a Tr b
+compile (If cond t f) = (compile cond `App` Lam "y" (compile t) `App` Lam "y" (compile f)) `App` Lam "x" (Ref "x")
+compile (And a b) = compile $ If a b VFalse
+compile (Or a b) = compile $ If a VTrue b
 
 compile (Num n) = churchNum n
-compile (Test0 n) = undefined
+compile (Test0 n) = compile n `App` Lam "x" false `App` true
 compile (Minus a b) = undefined
 compile (Plus a b) = undefined
 compile (Mult a b) = undefined
-compile (Eq a b) = undefined
+compile (Eq a b) = compile $ And (Test0 (Minus a b)) (Test0 (Minus b a))
 
-compile (Lambda (Lam args body)) = foldr N.Lambda (compile body) args
-compile (Let bindings body) = undefined
+compile (Lambda args body) = foldr Lam (compile body) args
+compile (Let [] body) = compile body -- might not be right
+compile (Let ((n,v):rest) body) = Lam n (compile (Let rest body)) `App` compile v
 compile (Letrec (name, fn) body) = undefined
+-- let fn = \arg.( ... fn ... )
+-- let fn = (\rec. \arg.( ... rec ... )) fn
+-- let fn = (\rec. \arg.( ... rec ... )) (\rec. \arg.( ... rec ... ))
+-- let fn = (\rec. \arg.( ... (rec rec) ... )) (\rec. \arg.( ... (rec rec) ... ))
+-- let fn = \arg.( ... ((\rec. \arg.( ... (rec rec) ... )) (\rec. \arg.( ... (rec rec) ... ))) ... ))
+
 
 compile (Cons a b) = undefined
 compile (Head a) = undefined
 compile (Tail a) = undefined
 compile (TestPair a) = undefined
 compile (TestNull a) = undefined
-compile EmptyList = undefined
+-- \a b. b (\x.x)
+compile VEmpty = undefined
 
-compile (App a b) = undefined
+compile (Application a b) = compile a `App` compile b
 
 
--- λx.λy.x
+-- λt.λf.t
 true :: Node
-true = l "x" $ l "y" $ r "x"
+true = Lam "t" $ Lam "f" $ Ref "t"
 
--- λx.λy.y
+-- λt.λf.f
 false :: Node
-false = l "x" $ l "y" $ r "x"
+false = Lam "t" $ Lam "f" $ Ref "f"
 
 
-churchNum :: Integer -> Node
--- λf.λx.x
-churchNum 0 = l "f" $ l "x" $ r "x"
--- λf.λx.x (churchNum (n-1))
-churchNum n = l "f" $ l "x" $ r "f" <> churchNum (n-1)
-
-l :: String -> Node -> Node
-l = N.Lambda
-
-r :: String -> Node
-r = N.Ref
-
-(<>) :: Node -> Node -> Node
-a <> b = N.App a b
+churchNum :: Int -> Node
+-- λf.λx.f^n x
+churchNum n = Lam "f" $ Lam "x" $ foldr App (Ref "x") $ replicate n (Ref "f")
