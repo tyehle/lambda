@@ -2,6 +2,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import ParserSpec
+import HL.ParserSpec
 
 import Node
 import Lambda (interp)
@@ -10,6 +11,7 @@ main :: IO ()
 main = defaultMain $ testGroup "Tests"
   [ beta
   , parserTests
+  , hlParserTests
   ]
 
 nid :: String -> Node
