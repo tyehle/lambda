@@ -17,5 +17,4 @@ interpTests = testGroup "Interp Tests"
   , test 2 "(\\a b . a) \\x.x" "\\b.\\x.x"
   , test 3 "\\x.x" "\\x.x"
   , test 4 "(\\a.a a) \\x.x" "\\x.x"
-  , test 5 "((\\x y z.(x z)(y z)) \\x y.x) \\x y.x" "\\z.z"
   ]

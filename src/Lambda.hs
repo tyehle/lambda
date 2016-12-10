@@ -17,9 +17,8 @@ instance Pretty Result where
 
 -- beta reduce a node
 interp :: Node -> Node
-interp = fromResult . closInterp []
-  where
-    fromResult (Clos _ arg body) = Lam arg body
+interp n = let next = substInterp n
+           in if next == n then n else interp next
 
 closInterp :: Env -> Node -> Result
 closInterp e (Lam x body) = Clos e x body
@@ -29,11 +28,11 @@ closInterp e (App f x) = doApp $ closInterp e f
     doApp (Clos e' arg body) = closInterp ((arg, closInterp e x):e') body
 
 
-step :: Node -> Node
-step l@Lam{} = l
-step (Ref x) = error $ x ++ " not in scope"
-step (App f x) = case step f of
-                   Lam arg body -> doSubst arg (step x) body
+substInterp :: Node -> Node
+substInterp l@Lam{} = l
+substInterp (Ref x) = error $ x ++ " not in scope"
+substInterp (App f x) = case substInterp f of
+                   Lam arg body -> doSubst arg (substInterp x) body
                    _ -> undefined
 
 doSubst :: String -> Node -> Node -> Node

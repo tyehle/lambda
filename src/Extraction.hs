@@ -43,9 +43,3 @@ extractInt expr = case interpAug [] aug of
     plus1 (RNum n) = RNum (n + 1)
     plus1 _        = undefined
     aug = toAug expr `AApp` AFun plus1 `AApp` ANum 0
-
-
-
--- (λn.λm.λf.λx.m f (n f x)) (λf.λx.f x) (λf.λx.f (f x))
--- (λm.λf.λx.m f ((λf.λx.f x) f x)) (λf.λx.f (f x))
--- λf.λx.(λf.λx.f (f x)) f ((λf.λx.f x) f x)
