@@ -16,12 +16,17 @@ instance Pretty Result where
   pretty (Clos env arg body) = prettyEnv env ++ "⊣ " ++ pretty (Lam arg body)
 
 -- beta reduce a node
-interp :: Env -> Node -> Result
-interp e (Lam x body) = Clos e x body
-interp e (Ref x) = fromMaybe (error $ x ++ " not in scope") (lookup x e)
-interp e (App f x) = doApp $ interp e f
+interp :: Node -> Node
+interp = fromResult . closInterp []
   where
-    doApp (Clos e' arg body) = interp ((arg, interp e x):e') body
+    fromResult (Clos _ arg body) = Lam arg body
+
+closInterp :: Env -> Node -> Result
+closInterp e (Lam x body) = Clos e x body
+closInterp e (Ref x) = fromMaybe (error $ x ++ " not in scope") (lookup x e)
+closInterp e (App f x) = doApp $ closInterp e f
+  where
+    doApp (Clos e' arg body) = closInterp ((arg, closInterp e x):e') body
 
 -- toCNum :: Integer -> Node
 -- toCNum 0 = Lam "f" $ Lam "x" $ Ref "x"

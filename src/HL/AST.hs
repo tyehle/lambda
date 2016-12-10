@@ -9,7 +9,7 @@ data Exp = Var String
          | Or Exp Exp
 
          | Num Int
-         | Test0 Exp
+         | IsZero Exp
          | Minus Exp Exp
          | Plus Exp Exp
          | Mult Exp Exp
@@ -22,12 +22,9 @@ data Exp = Var String
          | Cons Exp Exp
          | Head Exp
          | Tail Exp
-         | TestPair Exp
-         | TestNull Exp
+         | IsPair Exp
+         | IsNull Exp
          | VEmpty
 
          | Application Exp Exp
          deriving (Show)
-
-
--- data Lam = Lam [String] Exp deriving (Show)

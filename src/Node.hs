@@ -10,4 +10,4 @@ data Node = Lam String Node
 instance Pretty Node where
   pretty (Lam arg body) = "λ" ++ arg ++ "." ++ pretty body
   pretty (Ref x) = x
-  pretty (App f x) = "(" ++ pretty f ++ ") " ++ pretty x
+  pretty (App f x) = "(" ++ pretty f ++ ") (" ++ pretty x ++ ")"

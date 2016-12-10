@@ -21,7 +21,7 @@ expressionP =  Var <$> try identifierP
            <|> try (fn2 "or" Or)
 
            <|> Num . read <$> many1 digit
-           <|> try (fn1 "zero?" Test0)
+           <|> try (fn1 "zero?" IsZero)
            <|> try (fn2 "-" Minus)
            <|> try (fn2 "+" Plus)
            <|> try (fn2 "*" Mult)
@@ -34,8 +34,8 @@ expressionP =  Var <$> try identifierP
            <|> try (fn2 "cons" Cons)
            <|> try (fn1 "head" Head)
            <|> try (fn1 "tail" Tail)
-           <|> try (fn1 "pair?" TestPair)
-           <|> try (fn1 "null?" TestNull)
+           <|> try (fn1 "pair?" IsPair)
+           <|> try (fn1 "null?" IsNull)
            <|> try (word "()" *> return VEmpty)
            <|> try appP
 
