@@ -28,15 +28,17 @@ closInterp e (App f x) = doApp $ closInterp e f
   where
     doApp (Clos e' arg body) = closInterp ((arg, closInterp e x):e') body
 
--- toCNum :: Integer -> Node
--- toCNum 0 = Lam "f" $ Lam "x" $ Ref "x"
--- toCNum n = Lam "f" $ Lam "x" $ App (Ref "f") (toCNum (n-1))
---
--- toCBool :: Bool -> Node
--- toCBool True  = Lam "a" $ Lam "b" $ Ref "a"
--- toCBool False = Lam "a" $ Lam "b" $ Ref "b"
 
--- fromCNum :: Node -> Integer
--- fromCNum n = undefined
---   where
---     extract env (Clos e arg body) =
+step :: Node -> Node
+step l@Lam{} = l
+step (Ref x) = error $ x ++ " not in scope"
+step (App f x) = case step f of
+                   Lam arg body -> doSubst arg (step x) body
+                   _ -> undefined
+
+doSubst :: String -> Node -> Node -> Node
+doSubst name val b@(Lam arg body) = if name == arg
+                                       then b
+                                       else Lam arg (doSubst name val body)
+doSubst name val r@(Ref n) = if name == n then val else r
+doSubst name val (App f' x') = App (doSubst name val f') (doSubst name val x')
