@@ -1,7 +1,7 @@
 module Main where
 
 import Extraction (extractInt)
-import Lambda (interp)
+import Interpreter (interp)
 import HL.Compiler (compile)
 import HL.Parser (parseHL)
 

@@ -3,7 +3,7 @@ module HL.CompilerSpec (compilerTests) where
 import HL.Compiler
 import HL.AST
 import Node
-import Lambda
+import Interpreter
 
 import Test.Tasty
 import Test.Tasty.HUnit

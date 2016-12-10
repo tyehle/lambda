@@ -1,4 +1,4 @@
-module Lambda where
+module Interpreter where
 
 import Node
 import Pretty
