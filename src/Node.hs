@@ -18,3 +18,8 @@ instance Pretty Node where
       right a@App{} = wrap a
       right l@Lam{} = wrap l
       right other   = pretty other
+
+lispString :: Node -> String
+lispString (Lam arg body) = "(λ (" ++ arg ++ ")" ++ lispString body ++ ")"
+lispString (Ref x) = x
+lispString (App f x) = "(" ++ lispString f ++ " " ++ lispString x ++ ")"
