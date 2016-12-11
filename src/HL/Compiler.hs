@@ -93,21 +93,31 @@ sub :: Node
 sub = Lam "n" $ Lam "m" $ Ref "m" `App` prev `App` Ref "n"
 
 
-
+-- λh.λt.λf.λe.f h t
 cons :: Node
-cons = undefined
+cons = Lam "h" $ Lam "t" $ Lam "f" $ Lam "e" $ Ref "f" `App` Ref "h" `App` Ref "t"
 
+-- λf.λe.e (λd.d)
 empty :: Node
-empty = undefined
+empty = Lam "f" $ Lam "e" $ Ref "e" `App` Lam "d" (Ref "d")
 
+-- λl.l (λh.λt.h) hang
 hd :: Node
-hd = undefined
+hd = Lam "l" $ Ref "l" `App` Lam "h" (Lam "t" $ Ref "h") `App` hang
 
+-- λl.l (λh.λt.t) hang
 tl :: Node
-tl = undefined
+tl = Lam "l" $ Ref "l" `App` Lam "h" (Lam "t" $ Ref "t") `App` hang
 
+-- λl.l (λf.true) (λe.false)
 isPair :: Node
-isPair = undefined
+isPair = Lam "l" $ Ref "l" `App` Lam "f" true `App` Lam "e" false
 
+-- λl.l (λf.false) (λe.true)
 isEmpty :: Node
-isEmpty = undefined
+isEmpty = Lam "l" $ Ref "l" `App` Lam "f" false `App` Lam "e" true
+
+
+-- (λu.u u) (λu.u u)
+hang :: Node
+hang = Lam "u" (Ref "u" `App` Ref "u") `App` Lam "u" (Ref "u" `App` Ref "u")
