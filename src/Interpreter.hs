@@ -31,8 +31,8 @@ closInterp e (App f x) = doApp $ closInterp e f
 substInterp :: Node -> Node
 substInterp l@Lam{} = l
 substInterp (Ref x) = error $ x ++ " not in scope"
-substInterp (App f x) = case substInterp f of
-                   Lam arg body -> doSubst arg (substInterp x) body
+substInterp (App f x) = case interp f of
+                   Lam arg body -> doSubst arg (interp x) body
                    _ -> undefined
 
 doSubst :: String -> Node -> Node -> Node
