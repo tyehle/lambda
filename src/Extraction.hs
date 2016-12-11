@@ -2,34 +2,39 @@ module Extraction where
 
 import Node
 
+type InterpError = String
+type Extractor a = Result -> Either InterpError a
+
 data Aug = ALam String Aug
          | ARef String
          | AApp Aug Aug
          | ANum Integer
          | ABool Bool
-         | AFun (Result -> Result)
+         | AFun (Extractor Result)
 
 type Env = [(String, Result)]
 data Result = RClos Env String Aug
-            | RFun (Result -> Result)
+            | RFun (Extractor Result)
             | RNum Integer
             | RBool Bool
             | RPair (Result, Result)
             | REmpty
 
-r2b :: Result -> Maybe Bool
-r2b (RBool b) = Just b
-r2b _ = Nothing
+r2b :: Extractor Bool
+r2b (RBool b) = Right b
+r2b _ = Left "Non-boolean result"
 
-r2i :: Result -> Maybe Integer
-r2i (RNum n) = Just n
-r2i _ = Nothing
+r2i :: Extractor Integer
+r2i (RNum n) = Right n
+r2i _ = Left "Non-int result"
 
-r2p :: Result -> Maybe (Result, Result)
-r2p (RPair p) = Just p
-r2p _ = Nothing
+r2p :: Extractor (Result, Result)
+r2p (RPair p) = Right p
+r2p _ = Left "Non-pair result"
 
-type InterpError = String
+r2e :: Extractor [a]
+r2e REmpty = Right []
+r2e _ = Left "Non-empty result"
 
 toAug :: Node -> Aug
 toAug (Lam arg body) = ALam arg (toAug body)
@@ -45,34 +50,58 @@ interpAug _ (AFun f) = Right $ RFun f
 interpAug e (AApp f x) = interpAug e f >>= doApp
   where
     doApp (RClos e' arg body) = interpAug e x >>= \v -> interpAug ((arg, v):e') body
-    doApp (RFun rf) = rf <$> interpAug e x
+    doApp (RFun rf) = interpAug e x >>= rf
     doApp _ = Left "Cannot apply numbers or booleans"
 
-intExtractor :: Result -> Either InterpError Integer
-intExtractor = undefined
+
+toRes :: Node -> Either InterpError Result
+toRes = interpAug [] . toAug
+
+intExtractor :: Extractor Integer
+intExtractor (RClos e arg body) = interpAug ((arg, RFun plus1):e) (body `AApp` ANum 0) >>= r2i
+intExtractor r = r2i r
 
 extractInt :: Node -> Either InterpError Integer
-extractInt expr = extractResult r2i $ toAug expr `AApp` AFun plus1 `AApp` ANum 0
-  where
-    plus1 (RNum n) = RNum (n+1)
-    plus1 _ = undefined
+extractInt expr = toRes expr >>= intExtractor
+
+boolExtractor :: Extractor Bool
+boolExtractor (RClos e arg body) = interpAug ((arg, RBool True):e) (body `AApp` ABool False) >>= r2b
+boolExtractor r = r2b r
 
 extractBool :: Node -> Either InterpError Bool
-extractBool expr = extractResult r2b $ toAug expr `AApp` ABool True `AApp` ABool False
+extractBool expr = toRes expr >>= boolExtractor
+
+pairExtractor :: Extractor (Result, Result)
+pairExtractor (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= r2p
+pairExtractor r = r2p r
 
 extractPair :: Node -> Either InterpError (Result, Result)
-extractPair expr = extractResult r2p $ toAug expr `AApp` AFun onCons `AApp` AFun onEmpty
+-- extractPair expr = interpAug [] (toAug expr `AApp` AFun onCons `AApp` AFun onEmpty) >>= r2p
+extractPair expr = toRes expr >>= pairExtractor
 
-extractResult :: (Result -> Maybe a) -> Aug -> Either InterpError a
-extractResult extractor expr = case interpAug [] expr of
-  res@Right{} -> res >>= maybe (Left "Wrong type in extraction") Right . extractor
-  Left msg -> Left $ "Interpretation Error: " ++ msg
+emptyExtractor :: Extractor [a]
+emptyExtractor (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= r2e
+emptyExtractor r = r2e r
 
--- empty = \_ onNil -> onNil id
--- lst = \onCons _ -> onCons "hd" "tl"
+extractEmpty :: Node -> Either InterpError [a]
+extractEmpty expr = toRes expr >>= emptyExtractor
 
-onEmpty :: Result -> Result
-onEmpty = const REmpty
+listExtractor :: Extractor a -> Result -> Either InterpError [a]
+listExtractor ex (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= listExtractor ex
+listExtractor ex (RPair (hd,tl)) = (:) <$> ex hd <*> listExtractor ex tl
+listExtractor _ REmpty = Right []
+listExtractor _ _ = Left "Non-list result"
 
-onCons :: Result -> Result
-onCons hd = RFun (\tl -> RPair (hd,tl))
+extractList :: Extractor a -> Node -> Either InterpError [a]
+extractList extractor expr = toRes expr >>= listExtractor extractor
+
+
+plus1 :: Extractor Result
+plus1 (RNum n) = Right $ RNum (n+1)
+plus1 _ = Left "Addition on non-int type"
+
+onEmpty :: Extractor Result
+onEmpty = const $ Right REmpty
+
+onCons :: Extractor Result
+onCons hd = Right $ RFun (\tl -> Right $ RPair (hd,tl))
