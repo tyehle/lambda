@@ -20,21 +20,6 @@ data Result = RClos Env String Aug
             | RPair (Result, Result)
             | REmpty
 
-r2b :: Extractor Bool
-r2b (RBool b) = Right b
-r2b _ = Left "Non-boolean result"
-
-r2i :: Extractor Integer
-r2i (RNum n) = Right n
-r2i _ = Left "Non-int result"
-
-r2p :: Extractor (Result, Result)
-r2p (RPair p) = Right p
-r2p _ = Left "Non-pair result"
-
-r2e :: Extractor [a]
-r2e REmpty = Right []
-r2e _ = Left "Non-empty result"
 
 toAug :: Node -> Aug
 toAug (Lam arg body) = ALam arg (toAug body)
@@ -58,30 +43,34 @@ toRes :: Node -> Either InterpError Result
 toRes = interpAug [] . toAug
 
 intExtractor :: Extractor Integer
-intExtractor (RClos e arg body) = interpAug ((arg, RFun plus1):e) (body `AApp` ANum 0) >>= r2i
-intExtractor r = r2i r
+intExtractor (RClos e arg body) = interpAug ((arg, RFun plus1):e) (body `AApp` ANum 0) >>= intExtractor
+intExtractor (RNum n) = Right n
+intExtractor _ = Left "Non-int result"
 
 extractInt :: Node -> Either InterpError Integer
 extractInt expr = toRes expr >>= intExtractor
 
 boolExtractor :: Extractor Bool
-boolExtractor (RClos e arg body) = interpAug ((arg, RBool True):e) (body `AApp` ABool False) >>= r2b
-boolExtractor r = r2b r
+boolExtractor (RClos e arg body) = interpAug ((arg, RBool True):e) (body `AApp` ABool False) >>= boolExtractor
+boolExtractor (RBool b) = Right b
+boolExtractor _ = Left "Non-boolean result"
 
 extractBool :: Node -> Either InterpError Bool
 extractBool expr = toRes expr >>= boolExtractor
 
 pairExtractor :: Extractor (Result, Result)
-pairExtractor (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= r2p
-pairExtractor r = r2p r
+pairExtractor (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= pairExtractor
+pairExtractor (RPair p) = Right p
+pairExtractor _ = Left "Non-pair result"
 
 extractPair :: Node -> Either InterpError (Result, Result)
 -- extractPair expr = interpAug [] (toAug expr `AApp` AFun onCons `AApp` AFun onEmpty) >>= r2p
 extractPair expr = toRes expr >>= pairExtractor
 
 emptyExtractor :: Extractor [a]
-emptyExtractor (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= r2e
-emptyExtractor r = r2e r
+emptyExtractor (RClos e arg body) = interpAug ((arg, RFun onCons):e) (body `AApp` AFun onEmpty) >>= emptyExtractor
+emptyExtractor REmpty = Right []
+emptyExtractor _ = Left "Non-empty result"
 
 extractEmpty :: Node -> Either InterpError [a]
 extractEmpty expr = toRes expr >>= emptyExtractor
