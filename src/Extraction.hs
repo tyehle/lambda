@@ -43,3 +43,11 @@ extractInt expr = case interpAug [] aug of
     plus1 (RNum n) = RNum (n + 1)
     plus1 _        = undefined
     aug = toAug expr `AApp` AFun plus1 `AApp` ANum 0
+
+extractBool :: Node -> Either InterpError Bool
+extractBool expr = case interpAug [] aug of
+  Right (RBool b) -> Right b
+  Right _ -> Left $ InterpError "Non-boolean result"
+  Left (InterpError msg) -> Left $ InterpError $ "Interpretation Error: " ++ msg
+  where
+    aug = toAug expr `AApp` ABool True `AApp` ABool False
