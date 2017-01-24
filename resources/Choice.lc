@@ -1,0 +1,15 @@
+(letrec (factorial (lambda (x) (if (zero? x)
+                                   1
+                                   (* x (factorial (- x 1))))))
+  (letrec (choose (lambda (n k) (/ (factorial n)
+                                   (* (factorial k) (factorial (- n k))))))
+    (choose 20 10)))
+
+
+(letrec (div1 (lambda (n m)
+                (let ([diff (- n m)])
+                  (if (zero? diff)
+                      0
+                      (+ 1 (div1 diff m))))))
+  (let ((div (lambda (n m) (div1 (+ 1 n) m))))
+    (div 5 5)))
