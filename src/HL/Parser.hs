@@ -14,6 +14,7 @@ programP = expressionP <* eof
 
 expressionP :: Parser Exp
 expressionP =  Var <$> try identifierP
+
            <|> (word "#t" *> return VTrue)
            <|> (word "#f" *> return VFalse)
            <|> try ifP
@@ -25,6 +26,7 @@ expressionP =  Var <$> try identifierP
            <|> try (fn2 "-" Minus)
            <|> try (fn2 "+" Plus)
            <|> try (fn2 "*" Mult)
+           <|> try (fn2 "/" Divide)
            <|> try (fn2 "=" Eq)
 
            <|> try lamP

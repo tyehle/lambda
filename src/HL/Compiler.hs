@@ -19,6 +19,7 @@ compile (IsZero n) = compile n `App` Lam "x" false `App` true
 compile (Minus a b) = sub `App` compile a `App` compile b
 compile (Plus a b) = plus `App` compile a `App` compile b
 compile (Mult a b) = mult `App` compile a `App` compile b
+compile (Divide a b) = divide `App` compile a `App` compile b
 compile (Eq a b) = compile $ And (IsZero (Minus a b)) (IsZero (Minus b a))
 
 compile (Lambda args body) = foldr Lam (compile body) args
@@ -91,6 +92,19 @@ prev = Lam "n" $ Lam "f" $ Lam "x" $
 -- λn.λm.m prev n
 sub :: Node
 sub = Lam "n" $ Lam "m" $ Ref "m" `App` prev `App` Ref "n"
+
+divide :: Node
+divide = Lam "n" $ Lam "m" $ compile (div1let (Var "n") (Var "m"))
+  where
+    -- (if (zero? diff) 0 (+ 1 (div1 diff m)))
+    body = If (IsZero (Var "diff"))
+              (Num 0)
+              (Plus (Num 1)
+                    (Var "div1" `Application` Var "diff" `Application` Var "m"))
+    -- (let ([diff (- n m)]) body)
+    minusBinding = Let [("diff", Minus (Var "n") (Var "m"))] body
+    div1let n m = Letrec ("div1", (["n", "m"], minusBinding))
+                         (Var "div1" `Application` Plus (Num 1) n `Application` m)
 
 
 -- λh.λt.λf.λe.f h t

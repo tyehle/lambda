@@ -13,6 +13,7 @@ data Exp = Var String
          | Minus Exp Exp
          | Plus Exp Exp
          | Mult Exp Exp
+         | Divide Exp Exp
          | Eq Exp Exp
 
          | Lambda [String] Exp

@@ -34,7 +34,7 @@ test-suite lambda-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       ParserSpec, HL.ParserSpec, HL.CompilerSpec
+  other-modules:       ParserSpec, HL.ParserSpec, HL.CompilerSpec, InterpreterSpec
   build-depends:       base
                      , lambda
                      , tasty
