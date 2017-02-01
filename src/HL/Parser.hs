@@ -3,9 +3,10 @@ module HL.Parser (parseHL) where
 import HL.AST
 import Text.Parsec
 import Control.Monad (void)
+import Data.Bifunctor (first)
 
-parseHL :: String -> Exp
-parseHL = either (error . show) id . parse programP "input"
+parseHL :: String -> Either String Exp
+parseHL = first show . parse programP "input"
 
 type Parser a = Parsec String () a
 

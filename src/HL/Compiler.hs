@@ -3,6 +3,11 @@ module HL.Compiler where
 import HL.AST
 import Node
 
+
+-- always succeed for now
+errCompile :: Exp -> Either String Node
+errCompile = Right . compile
+
 compile :: Exp -> Node
 compile (Var name) = Ref name
 
