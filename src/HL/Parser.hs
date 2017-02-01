@@ -3,10 +3,10 @@ module HL.Parser (parseHL) where
 import HL.AST
 import Text.Parsec
 import Control.Monad (void)
-import Data.Bifunctor (first)
+import qualified Data.Bifunctor as Bifunctor (first)
 
 parseHL :: String -> Either String Exp
-parseHL = first show . parse programP "input"
+parseHL = Bifunctor.first show . parse programP "input"
 
 type Parser a = Parsec String () a
 
@@ -21,6 +21,7 @@ expressionP =  Var <$> try identifierP
            <|> try ifP
            <|> try (fn2 "and" And)
            <|> try (fn2 "or" Or)
+           <|> try (fn1 "not" Not)
 
            <|> Num . read <$> many1 digit
            <|> try (fn1 "zero?" IsZero)
@@ -29,6 +30,7 @@ expressionP =  Var <$> try identifierP
            <|> try (fn2 "*" Mult)
            <|> try (fn2 "/" Divide)
            <|> try (fn2 "=" Eq)
+           <|> try (fn1 "even?" IsEven)
 
            <|> try lamP
            <|> try letP

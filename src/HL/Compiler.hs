@@ -18,6 +18,7 @@ compile VFalse = false
 compile (If cond t f) = (compile cond `App` Lam "y" (compile t) `App` Lam "y" (compile f)) `App` Lam "x" (Ref "x")
 compile (And a b) = compile $ If a b VFalse
 compile (Or a b) = compile $ If a VTrue b
+compile (Not a) = compile $ If a VFalse VTrue
 
 compile (Num n) = churchNum n
 compile (IsZero n) = compile n `App` Lam "x" false `App` true
@@ -26,6 +27,9 @@ compile (Plus a b) = plus `App` compile a `App` compile b
 compile (Mult a b) = mult `App` compile a `App` compile b
 compile (Divide a b) = divide `App` compile a `App` compile b
 compile (Eq a b) = compile $ And (IsZero (Minus a b)) (IsZero (Minus b a))
+compile (IsEven a) = compile a `App` compile switch `App` true
+  where
+    switch = Lambda ["x"] $ If (Var "x") VFalse VTrue
 
 compile (Lambda args body) = foldr Lam (compile body) args
 compile (Let [] body) = compile body

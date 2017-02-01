@@ -7,6 +7,7 @@ data Exp = Var String
          | If Exp Exp Exp
          | And Exp Exp
          | Or Exp Exp
+         | Not Exp
 
          | Num Int
          | IsZero Exp
@@ -15,6 +16,7 @@ data Exp = Var String
          | Mult Exp Exp
          | Divide Exp Exp
          | Eq Exp Exp
+         | IsEven Exp
 
          | Lambda [String] Exp
          | Let [(String, Exp)] Exp
