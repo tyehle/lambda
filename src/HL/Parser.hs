@@ -10,6 +10,39 @@ parseHL = Bifunctor.first show . parse programP "input"
 
 type Parser a = Parsec String () a
 
+-- <exp> ::= <var>
+--
+--        |  #t
+--        |  #f
+--        |  (if  <exp> <exp> <exp>)
+--        |  (and <exp> <exp>)
+--        |  (or  <exp> <exp>)
+--        |  (not <exp>)
+--
+--        |  <nat>
+--        |  (zero? <exp>)
+--        |  (- <exp> <exp>)
+--        |  (= <exp> <exp>)
+--        |  (+ <exp> <exp>)
+--        |  (* <exp> <exp>)
+--        |  (/ <exp> <exp>)
+--        |  (even? <exp>)
+--
+--        |  <lam>
+--        |  (let ((<var> <exp>) ...) <exp>)
+--        |  (letrec ((<var> <lam>)) <exp>)
+--
+--        |  (cons <exp> <exp>)
+--        |  (car  <exp>)
+--        |  (cdr  <exp>)
+--        |  (pair? <exp>)
+--        |  (null? <exp>)
+--        |  '()
+--
+--        |  (<exp> <exp> ...)
+--
+-- <lam> ::= (λ (<var> ...) <exp>)
+
 programP :: Parser Exp
 programP = expressionP <* eof
 
@@ -98,6 +131,7 @@ fn2 s builder = inParens $ do
   l <- expressionP
   return $ builder r l
 
+-- must not include whitespace or ')'
 identifierP :: Parser String
 identifierP = (:) <$> lower <*> many alphaNum
 
