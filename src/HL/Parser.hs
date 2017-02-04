@@ -6,10 +6,15 @@ import Control.Monad (void)
 import qualified Data.Bifunctor as Bifunctor (first)
 
 parseHL :: String -> Either String Exp
-parseHL = Bifunctor.first show . parse programP "input"
+parseHL = Bifunctor.first show . parse expressionP "input"
 
 type Parser a = Parsec String () a
 
+-- <prg> ::= <def> ... <exp>
+--
+-- <def> ::= (define <var> <exp>)
+--        |  (define (<var> <var> ...) <exp>)
+--
 -- <exp> ::= <var>
 --
 --        |  #t
@@ -28,9 +33,9 @@ type Parser a = Parsec String () a
 --        |  (/ <exp> <exp>)
 --        |  (even? <exp>)
 --
---        |  <lam>
+--        |  (λ (<var> ...) <exp>)
 --        |  (let ((<var> <exp>) ...) <exp>)
---        |  (letrec ((<var> <lam>)) <exp>)
+--        |  (letrec (<var> <exp>) <exp>)
 --
 --        |  (cons <exp> <exp>)
 --        |  (car  <exp>)
@@ -40,11 +45,30 @@ type Parser a = Parsec String () a
 --        |  '()
 --
 --        |  (<exp> <exp> ...)
---
--- <lam> ::= (λ (<var> ...) <exp>)
 
-programP :: Parser Exp
-programP = expressionP <* eof
+programP :: Parser Program
+-- programP = expressionP <* eof
+programP = Program <$> sepEndBy definitionP whitespace <*> expressionP <* eof
+
+definitionP :: Parser Definition
+definitionP = inParens $ do
+  _ <- word "define"
+  whitespace
+  defVal <|> defFun
+  where
+    defVal = do
+      name <- identifierP
+      whitespace
+      body <- expressionP
+      return $ Def name body
+    defFun = do
+      name <- identifierP
+      whitespace
+      args <- sepEndBy identifierP whitespace
+      whitespace
+      body <- expressionP
+      return . Def name $ Lambda args body
+
 
 expressionP :: Parser Exp
 expressionP =  Var <$> try identifierP
@@ -106,10 +130,10 @@ letrecP :: Parser Exp
 letrecP = inParens $ do
   _ <- word "letrec"
   whitespace
-  (name, Lambda args fn) <- inParens ((,) <$> (identifierP <* whitespace) <*> lamP)
+  (name, binding) <- inParens ((,) <$> (identifierP <* whitespace) <*> expressionP)
   whitespace
   body <- expressionP
-  return $ Letrec (name, (args, fn)) body
+  return $ Letrec name binding body
 
 appP :: Parser Exp
 appP = inParens $ do

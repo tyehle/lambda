@@ -34,9 +34,7 @@ compile (IsEven a) = compile a `App` compile switch `App` true
 compile (Lambda args body) = foldr Lam (compile body) args
 compile (Let [] body) = compile body
 compile (Let ((n,v):rest) body) = Lam n (compile (Let rest body)) `App` compile v
-compile (Letrec (name, fn) body) = compile $ Let [(name, y `Application` Lambda [name] fnLambda )] body
-  where
-    fnLambda = uncurry Lambda fn
+compile (Letrec name binding body) = compile $ Let [(name, y `Application` Lambda [name] binding)] body
 
 
 compile (Cons a b) = cons `App` compile a `App` compile b
@@ -112,7 +110,8 @@ divide = Lam "n" $ Lam "m" $ compile (div1let (Var "n") (Var "m"))
                     (Var "div1" `Application` Var "diff" `Application` Var "m"))
     -- (let ([diff (- n m)]) body)
     minusBinding = Let [("diff", Minus (Var "n") (Var "m"))] body
-    div1let n m = Letrec ("div1", (["n", "m"], minusBinding))
+    div1let n m = Letrec "div1"
+                         (Lambda ["n", "m"] minusBinding)
                          (Var "div1" `Application` Plus (Num 1) n `Application` m)
 
 

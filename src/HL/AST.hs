@@ -1,5 +1,9 @@
 module HL.AST where
 
+data Program = Program [Definition] Exp deriving (Show)
+
+data Definition = Def String Exp deriving (Show)
+
 data Exp = Var String
 
          | VTrue
@@ -20,7 +24,7 @@ data Exp = Var String
 
          | Lambda [String] Exp
          | Let [(String, Exp)] Exp
-         | Letrec (String, ([String], Exp)) Exp
+         | Letrec String Exp Exp
 
          | Cons Exp Exp
          | Head Exp
@@ -53,7 +57,7 @@ walk f (IsEven a) = f [a]
 
 walk f (Lambda _ a) = f [a]
 walk f (Let bindings body) = f $ map snd bindings ++ [body]
-walk f (Letrec (_, (_, fnB)) body) = f [fnB, body]
+walk f (Letrec _ binding body) = f [binding, body]
 
 walk f (Cons a b) = f [a, b]
 walk f (Head a) = f [a]
