@@ -1,0 +1,39 @@
+(define (and a b)
+  (if a b #f))
+
+(define (or a b)
+  (if a #t b))
+
+(define (not a)
+  (if a #f #t))
+
+
+
+(define (<= a b)
+  (zero? (- a b)))
+
+(define (>= a b)
+  (zero? (- b a)))
+
+(define (< a b)
+  (<= (+ 1 a) b))
+
+(define (> a b)
+  (>= a (+ 1 b)))
+
+
+
+(define (foldl fn acc xs)
+  (if (null? xs)
+      acc
+      (foldl fn (fn acc (car xs)) (cdr xs))))
+
+(define (foldr fn acc xs)
+  (if (null? xs)
+      acc
+      (fn (car xs) (foldr fn acc (cdr xs)))))
+
+(define (map f xs)
+  (if (null? xs)
+      xs
+      (cons (f (car xs)) (map f (cdr xs)))))

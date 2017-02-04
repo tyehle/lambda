@@ -5,8 +5,8 @@ import Text.Parsec
 import Control.Monad (void)
 import qualified Data.Bifunctor as Bifunctor (first)
 
-parseHL :: String -> Either String Exp
-parseHL = Bifunctor.first show . parse expressionP "input"
+parseHL :: String -> Either String Program
+parseHL = Bifunctor.first show . parse programP "input"
 
 type Parser a = Parsec String () a
 
@@ -38,8 +38,8 @@ type Parser a = Parsec String () a
 --        |  (letrec (<var> <exp>) <exp>)
 --
 --        |  (cons <exp> <exp>)
---        |  (car  <exp>)
---        |  (cdr  <exp>)
+--        |  (head <exp>)
+--        |  (tail <exp>)
 --        |  (pair? <exp>)
 --        |  (null? <exp>)
 --        |  '()
@@ -48,7 +48,7 @@ type Parser a = Parsec String () a
 
 programP :: Parser Program
 -- programP = expressionP <* eof
-programP = Program <$> sepEndBy definitionP whitespace <*> expressionP <* eof
+programP = Program <$> sepEndBy (try definitionP) whitespace <*> expressionP <* spaces <* eof
 
 definitionP :: Parser Definition
 definitionP = inParens $ do
@@ -62,18 +62,14 @@ definitionP = inParens $ do
       body <- expressionP
       return $ Def name body
     defFun = do
-      name <- identifierP
-      whitespace
-      args <- sepEndBy identifierP whitespace
+      (name, args) <- inParens ((,) <$> (identifierP <* whitespace) <*> sepEndBy identifierP whitespace)
       whitespace
       body <- expressionP
       return . Def name $ Lambda args body
 
 
 expressionP :: Parser Exp
-expressionP =  Var <$> try identifierP
-
-           <|> (word "#t" *> return VTrue)
+expressionP =  (word "#t" *> return VTrue)
            <|> (word "#f" *> return VFalse)
            <|> try ifP
            <|> try (fn2 "and" And)
@@ -100,6 +96,8 @@ expressionP =  Var <$> try identifierP
            <|> try (fn1 "null?" IsNull)
            <|> try (word "()" *> return VEmpty)
            <|> try appP
+
+           <|> Var <$> try identifierP
 
 ifP :: Parser Exp
 ifP = inParens $ do
@@ -157,7 +155,9 @@ fn2 s builder = inParens $ do
 
 -- must not include whitespace or ')'
 identifierP :: Parser String
-identifierP = (:) <$> lower <*> many alphaNum
+identifierP = (:) <$> (lower <|> symbols) <*> many (alphaNum <|> symbols)
+  where
+    symbols = oneOf "!@#$%^&*_+-=|:;<>?,./~"
 
 whitespace :: Parser ()
 whitespace = void $ many1 space

@@ -2,50 +2,60 @@ module HL.Compiler where
 
 import HL.AST
 import Node
+import HL.Scoper (freeVars)
+
+import Data.Set (member)
 
 
 -- always succeed for now
-errCompile :: Exp -> Either String Node
-errCompile = Right . compile
+compile :: Program -> Either String Node
+compile = Right . compileExp . desugarProgram
 
-compile :: Exp -> Node
-compile (Var name) = Ref name
+desugarProgram :: Program -> Exp
+desugarProgram (Program ds e) = foldr defToLet e ds
+  where
+    defToLet (Def name expr) body = if name `member` freeVars expr
+                                    then Letrec name expr body
+                                    else Let [(name, expr)] body
 
-compile VTrue = true
-compile VFalse = false
+compileExp :: Exp -> Node
+compileExp (Var name) = Ref name
+
+compileExp VTrue = true
+compileExp VFalse = false
 -- (c (λy.t) (λy.f)) λx.x
 -- make sure to test an exception in the clauses
-compile (If cond t f) = (compile cond `App` Lam "y" (compile t) `App` Lam "y" (compile f)) `App` Lam "x" (Ref "x")
-compile (And a b) = compile $ If a b VFalse
-compile (Or a b) = compile $ If a VTrue b
-compile (Not a) = compile $ If a VFalse VTrue
+compileExp (If cond t f) = (compileExp cond `App` Lam "y" (compileExp t) `App` Lam "y" (compileExp f)) `App` Lam "x" (Ref "x")
+compileExp (And a b) = compileExp $ If a b VFalse
+compileExp (Or a b) = compileExp $ If a VTrue b
+compileExp (Not a) = compileExp $ If a VFalse VTrue
 
-compile (Num n) = churchNum n
-compile (IsZero n) = compile n `App` Lam "x" false `App` true
-compile (Minus a b) = sub `App` compile a `App` compile b
-compile (Plus a b) = plus `App` compile a `App` compile b
-compile (Mult a b) = mult `App` compile a `App` compile b
-compile (Divide a b) = divide `App` compile a `App` compile b
-compile (Eq a b) = compile $ And (IsZero (Minus a b)) (IsZero (Minus b a))
-compile (IsEven a) = compile a `App` compile switch `App` true
+compileExp (Num n) = churchNum n
+compileExp (IsZero n) = compileExp n `App` Lam "x" false `App` true
+compileExp (Minus a b) = sub `App` compileExp a `App` compileExp b
+compileExp (Plus a b) = plus `App` compileExp a `App` compileExp b
+compileExp (Mult a b) = mult `App` compileExp a `App` compileExp b
+compileExp (Divide a b) = divide `App` compileExp a `App` compileExp b
+compileExp (Eq a b) = compileExp $ And (IsZero (Minus a b)) (IsZero (Minus b a))
+compileExp (IsEven a) = compileExp a `App` compileExp switch `App` true
   where
     switch = Lambda ["x"] $ If (Var "x") VFalse VTrue
 
-compile (Lambda args body) = foldr Lam (compile body) args
-compile (Let [] body) = compile body
-compile (Let ((n,v):rest) body) = Lam n (compile (Let rest body)) `App` compile v
-compile (Letrec name binding body) = compile $ Let [(name, y `Application` Lambda [name] binding)] body
+compileExp (Lambda args body) = foldr Lam (compileExp body) args
+compileExp (Let [] body) = compileExp body
+compileExp (Let ((n,v):rest) body) = Lam n (compileExp (Let rest body)) `App` compileExp v
+compileExp (Letrec name binding body) = compileExp $ Let [(name, y `Application` Lambda [name] binding)] body
 
 
-compile (Cons a b) = cons `App` compile a `App` compile b
-compile (Head a) = hd `App` compile a
-compile (Tail a) = tl `App` compile a
-compile (IsPair a) = isPair `App` compile a
-compile (IsNull a) = isEmpty `App` compile a
+compileExp (Cons a b) = cons `App` compileExp a `App` compileExp b
+compileExp (Head a) = hd `App` compileExp a
+compileExp (Tail a) = tl `App` compileExp a
+compileExp (IsPair a) = isPair `App` compileExp a
+compileExp (IsNull a) = isEmpty `App` compileExp a
 -- \a b. b (\x.x)
-compile VEmpty = empty
+compileExp VEmpty = empty
 
-compile (Application a b) = compile a `App` compile b
+compileExp (Application a b) = compileExp a `App` compileExp b
 
 
 -- λt.λf.t
@@ -101,7 +111,7 @@ sub :: Node
 sub = Lam "n" $ Lam "m" $ Ref "m" `App` prev `App` Ref "n"
 
 divide :: Node
-divide = Lam "n" $ Lam "m" $ compile (div1let (Var "n") (Var "m"))
+divide = Lam "n" $ Lam "m" $ compileExp (div1let (Var "n") (Var "m"))
   where
     -- (if (zero? diff) 0 (+ 1 (div1 diff m)))
     body = If (IsZero (Var "diff"))

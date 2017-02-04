@@ -42,6 +42,9 @@ interpAug e (AApp f x) = interpAug e f >>= doApp
 toRes :: Node -> Either InterpError Result
 toRes = interpAug [] . toAug
 
+runExtractor :: Extractor a -> Node -> Either InterpError a
+runExtractor ex expr = toRes expr >>= ex
+
 intExtractor :: Extractor Integer
 intExtractor (RClos e arg body) = interpAug ((arg, RFun plus1):e) (body `AApp` ANum 0) >>= intExtractor
 intExtractor (RNum n) = Right n
