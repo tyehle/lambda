@@ -143,11 +143,11 @@ tl = Lam "l" $ Ref "l" `App` Lam "h" (Lam "t" $ Ref "t") `App` hang
 
 -- λl.l (λf.true) (λe.false)
 isPair :: Node
-isPair = Lam "l" $ Ref "l" `App` Lam "f" true `App` Lam "e" false
+isPair = Lam "l" $ Ref "l" `App` Lam "h" (Lam "t" true) `App` Lam "e" false
 
 -- λl.l (λf.false) (λe.true)
 isEmpty :: Node
-isEmpty = Lam "l" $ Ref "l" `App` Lam "f" false `App` Lam "e" true
+isEmpty = Lam "l" $ Ref "l" `App` Lam "h" (Lam "t" false) `App` Lam "e" true
 
 
 -- (λu.u u) (λu.u u)
