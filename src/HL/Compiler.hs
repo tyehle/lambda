@@ -37,9 +37,9 @@ compileExp (Plus a b) = plus `App` compileExp a `App` compileExp b
 compileExp (Mult a b) = mult `App` compileExp a `App` compileExp b
 compileExp (Divide a b) = divide `App` compileExp a `App` compileExp b
 compileExp (Eq a b) = compileExp $ And (IsZero (Minus a b)) (IsZero (Minus b a))
-compileExp (IsEven a) = compileExp a `App` compileExp switch `App` true
+compileExp (IsEven a) = compileExp a `App` switch `App` true
   where
-    switch = Lambda ["x"] $ If (Var "x") VFalse VTrue
+    switch = Lam "x" $ Ref "x" `App` false `App` true
 
 compileExp (Lambda args body) = foldr Lam (compileExp body) args
 compileExp (Let [] body) = compileExp body

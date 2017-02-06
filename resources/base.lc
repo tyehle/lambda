@@ -16,10 +16,13 @@
 
 ;; Bool Ops
 
+;; core form
 (define (if c t f)
   (c t f))
+;; core
 (define (and a b)
   (a b #f))
+;; core
 (define (or a b)
   (a #t b))
 (define (not a)
