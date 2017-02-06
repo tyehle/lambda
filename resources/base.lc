@@ -1,27 +1,75 @@
+;; Base file defining most of the functions of the language
+
+;; Useful Functions
+
+(define (id x) x)
+(define (const x y) x)
+(define hang
+  ((λ (u) (u u)) (λ (u) (u u)))
+
+
+;; Values
+
+(define (#t t f) t)
+(define (#f t f) f)
+
+
+;; Bool Ops
+
+(define (if c t f)
+  (c t f))
 (define (and a b)
-  (if a b #f))
-
+  (a b #f))
 (define (or a b)
-  (if a #t b))
-
+  (a #t b))
 (define (not a)
-  (if a #f #t))
+  (a #f #t))
 
 
+;; Numbers
+
+(define (zero? n) (n (const #f) #t))
+(define (= a b) (and (zero? (- a b)) (zero? (- b a))))
+(define (even? n) (n not #t))
+(define (+ a b) (λ (f x) (a f) (b f x)))
+(define (* a b) (λ (f) (a (b f))))
+(define (- a b)
+  (let ((prev (λ (n) (λ (f x) (n (λ (g h) (h (g f)))
+                                 (const x)
+                                 id)))))
+    (b prev a)))
+(define (/ n m)
+  (letrec (div1 (lambda (n1 m1)
+                   (let ([diff (- n1 m1)])
+                     (if (zero? diff)
+                         0
+                         (+ 1 (div1 diff m1))))))
+    (div1 (+ 1 n) m)))
 
 (define (<= a b)
   (zero? (- a b)))
-
 (define (>= a b)
   (zero? (- b a)))
-
 (define (< a b)
   (<= (+ 1 a) b))
-
 (define (> a b)
   (>= a (+ 1 b)))
 
 
+;; Lists
+
+(define (cons h t)
+  (λ (f e) (f h t)))
+(define empty
+  (λ (f e) (e id)))
+(define (head l)
+  (l (λ (h t) h) hang))
+(define (tail l)
+  (l (λ (h t) t) hang))
+(define (pair? l)
+  (l (λ (h t) #t) (const #f))
+(define (null? l)
+  (l (λ (h t) #f) (const #t)))
 
 (define (foldl fn acc xs)
   (if (null? xs)
@@ -37,3 +85,10 @@
   (if (null? xs)
       xs
       (cons (f (car xs)) (map f (cdr xs)))))
+
+(define (range low high)
+  (if (>= low high)
+      ()
+      (cons low
+            (range (+ 1 low)
+                   high))))

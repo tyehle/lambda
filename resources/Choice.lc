@@ -6,10 +6,21 @@
     (choose 20 10)))
 
 
-(letrec (div1 (lambda (n m)
-                (let ([diff (- n m)])
-                  (if (zero? diff)
-                      0
-                      (+ 1 (div1 diff m))))))
-  (let ((div (lambda (n m) (div1 (+ 1 n) m))))
-    (div 5 5)))
+(define (div1 n m)
+  (let ([diff (- n m)])
+    (if (zero? diff)
+        0
+        (+ 1 (div1 diff m)))))
+
+(define (div n m)
+  (div1 (+ 1 n) m))
+
+(define (/ n m)
+  (letrec (div1 (lambda (n1 m1)
+                   (let ([diff (- n1 m1)])
+                     (if (zero? diff)
+                         0
+                         (+ 1 (div1 diff m1))))))
+    (div1 (+ 1 n) m)))
+
+(div 5 5)

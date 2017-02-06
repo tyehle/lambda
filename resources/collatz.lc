@@ -32,5 +32,4 @@
             (range (+ 1 low)
                    high))))
 
-(let ((l (range 0 20)))
-  (map (lambda (x) (collatz x)) l))
+(map collatz (range 0 10))
