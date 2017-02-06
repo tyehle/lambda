@@ -157,7 +157,7 @@ fn2 s builder = inParens $ do
 identifierP :: Parser String
 identifierP = (:) <$> (lower <|> symbols) <*> many (alphaNum <|> symbols)
   where
-    symbols = oneOf "!@#$%^&*_+-=|:;<>?,./~"
+    symbols = oneOf "!@#$%^&*+-=<>?/~"
 
 whitespace :: Parser ()
 whitespace = void $ many1 space

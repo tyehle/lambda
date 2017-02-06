@@ -1,16 +1,15 @@
 module Interpreter where
 
-import Data.Map.Lazy (Map)
-import qualified Data.Map.Lazy as Map
-import Data.Maybe (fromMaybe)
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 
 import Node
 
-interp :: Node -> Node
-interp = undoClosures . envInterp Map.empty
+-- interp :: Node -> Node
+-- interp = undoClosures . envInterp Map.empty
 
-errInterp :: Node -> Either String Node
-errInterp = Right . interp
+interp :: Node -> Either String Node
+interp n = undoClosures <$> envInterp Map.empty n
 
 -- beta reduce a node
 -- interp :: Node -> Node
@@ -34,18 +33,19 @@ doSubst name val (App f' x') = App (doSubst name val f') (doSubst name val x')
 
 type Env = Map String INode
 
-data INode = IClos Env String Node | IRef String | IApp INode INode
+data INode = IClos Env String Node
 
-envInterp :: Env -> Node -> INode
-envInterp env (Lam arg body) = IClos env arg body
-envInterp env (Ref x) = fromMaybe (IRef x) (Map.lookup x env)
-envInterp env (App f x) = case envInterp env f of
-  (IClos env' arg body) -> envInterp (Map.insert arg (envInterp env x) env') body
-  complex -> IApp complex (envInterp env x)
+envInterp :: Env -> Node -> Either String INode
+envInterp env (Lam arg body) = Right $ IClos env arg body
+envInterp env (Ref x) = maybe (Left ("Unexpected reference: " ++ x))
+                              Right
+                              (Map.lookup x env)
+envInterp env (App f x) = do
+  (IClos env' arg body) <- envInterp env f
+  x' <- envInterp env x
+  envInterp (Map.insert arg x' env') body
 
 undoClosures :: INode -> Node
-undoClosures (IRef x) = Ref x
-undoClosures (IApp f x) = App (undoClosures f) (undoClosures x)
 undoClosures (IClos env arg body) = Lam arg $ Map.foldlWithKey' reduceAndSubst body (Map.delete arg env)
   where
     reduceAndSubst expr name inode = doSubst name (undoClosures inode) expr

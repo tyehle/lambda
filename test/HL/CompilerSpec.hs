@@ -17,12 +17,17 @@ compilerTests = testGroup "Compiler Tests"
   ]
 
 test :: Integer -> Exp -> Node -> TestTree
-test n input expected = testCase (show n) $ compile input @?= expected
+test n input expected = testCase (show n) $ compileExp input @?= expected
 
 testRun :: Integer -> Exp -> Node -> TestTree
 testRun n input expected = testCase (show n) assertion
   where
-    assertion = (interp . compile) input @?= expected
+    assertion = (interp . compileExp) input @?= Right expected
+
+idE :: Exp
+idE = Lambda ["i"] $ Var "i"
+idN :: Node
+idN = Lam "i" $ Ref "i"
 
 variableTests :: TestTree
 variableTests = testGroup "Variable Tests"
@@ -35,7 +40,14 @@ boolTests = testGroup "Bool Tests"
   , test 2 VFalse $ Lam "t" $ Lam "f" $ Ref "f"
   , test 3 (If VFalse (Var "a") (Var "b")) $
       (false `App` Lam "y" (Ref "a") `App` Lam "y" (Ref "b")) `App` Lam "x" (Ref "x")
-  , testRun 4 (If VTrue VFalse (Var "x")) false
+  , testRun 4 (If VTrue idE (Var "x")) idN
+  , testRun 5 (If VFalse (Var "x") idE) idN
+  , testRun 7 (And VTrue VFalse) false
+  , testRun 8 (And VFalse (Var "x")) false
+  , testRun 9 (Or VFalse VTrue) true
+  , testRun 10 (Or VTrue (Var "x")) true
+  , testRun 11 (Not VFalse) true
+  , testRun 12 (Not VTrue) false
   ]
 
 numTests :: TestTree

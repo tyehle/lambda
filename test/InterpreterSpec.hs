@@ -9,7 +9,7 @@ import Interpreter
 test :: Integer -> String -> String -> TestTree
 test n input expected = testCase (show n) assertion
   where
-    assertion = interp (parseProgram input) @?= parseProgram expected
+    assertion = interp (parseProgram input) @?= Right (parseProgram expected)
 
 interpTests :: TestTree
 interpTests = testGroup "Interp Tests"
