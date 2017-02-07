@@ -5,7 +5,6 @@ import Extraction (extractInt, Extractor, runExtractor)
 import Interpreter (interp)
 import HL.Compiler (compile)
 import HL.Parser (parseHL)
-import HL.Scoper (scopeProgram)
 
 main :: IO ()
 main = either putStrLn print $ extractInt =<< pipeline program
@@ -13,7 +12,7 @@ main = either putStrLn print $ extractInt =<< pipeline program
     program = "(letrec (f (lambda (x) (if (zero? x) 1 (* x (f (- x 1)))))) (f 5))"
 
 pipeline :: String -> Either String Node
-pipeline program = parseHL program >>= scopeProgram >>= compile >>= interp
+pipeline program = parseHL program >>= compile >>= interp
 
 runFile :: Show a => String -> Extractor a -> IO ()
 runFile filename extractor = do

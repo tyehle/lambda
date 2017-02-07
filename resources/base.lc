@@ -3,26 +3,23 @@
 ;; Useful Functions
 
 (define (id x) x)
-(define (const x y) x)
+(define (const x _) x)
 (define hang
-  ((λ (u) (u u)) (λ (u) (u u)))
+  ((λ (u) (u u)) (λ (u) (u u))))
 
 
 ;; Values
 
-(define (#t t f) t)
-(define (#f t f) f)
+(define (#t t _) t)
+(define (#f _ f) f)
 
 
 ;; Bool Ops
 
-;; core form
 (define (if c t f)
   (c t f))
-;; core
 (define (and a b)
   (a b #f))
-;; core
 (define (or a b)
   (a #t b))
 (define (not a)
@@ -62,32 +59,32 @@
 ;; Lists
 
 (define (cons h t)
-  (λ (f e) (f h t)))
+  (λ (f _) (f h t)))
 (define empty
-  (λ (f e) (e id)))
+  (λ (_ e) (e id)))
 (define (head l)
-  (l (λ (h t) h) hang))
+  (l (λ (h _) h) hang))
 (define (tail l)
-  (l (λ (h t) t) hang))
+  (l (λ (_ t) t) hang))
 (define (pair? l)
-  (l (λ (h t) #t) (const #f))
+  (l (λ (_ _) #t) (const #f))
 (define (null? l)
-  (l (λ (h t) #f) (const #t)))
+  (l (λ (_ _) #f) (const #t)))
 
 (define (foldl fn acc xs)
   (if (null? xs)
       acc
-      (foldl fn (fn acc (car xs)) (cdr xs))))
+      (foldl fn (fn acc (head xs)) (tail xs))))
 
 (define (foldr fn acc xs)
   (if (null? xs)
       acc
-      (fn (car xs) (foldr fn acc (cdr xs)))))
+      (fn (head xs) (foldr fn acc (tail xs)))))
 
 (define (map f xs)
   (if (null? xs)
       xs
-      (cons (f (car xs)) (map f (cdr xs)))))
+      (cons (f (head xs)) (map f (tail xs)))))
 
 (define (range low high)
   (if (>= low high)

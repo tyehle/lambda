@@ -2,14 +2,19 @@ module HL.Compiler where
 
 import HL.AST
 import Node
-import HL.Scoper (freeVars)
+import Scope
 
 import Data.Set (member)
 
 
--- always succeed for now
+checkScope :: (Scope a) => a -> Either String a
+checkScope input = maybe (Right input) (Left . msg) . toMaybe . freeVars $ input
+  where
+    msg name = "Variable not in scope: " ++ name
+    toMaybe = foldr (\e _ -> Just e) Nothing
+
 compile :: Program -> Either String Node
-compile = Right . compileExp . desugarProgram
+compile = checkScope . compileExp . desugarProgram
 
 desugarProgram :: Program -> Exp
 desugarProgram (Program ds e) = foldr defToLet e ds

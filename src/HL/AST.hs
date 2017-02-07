@@ -1,5 +1,10 @@
 module HL.AST where
 
+import Scope
+
+import Data.Set (Set)
+import qualified Data.Set as Set
+
 data Program = Program [Definition] Exp deriving (Show)
 
 data Definition = Def String Exp deriving (Show)
@@ -67,3 +72,25 @@ walk f (IsNull a) = f [a]
 walk f VEmpty = f []
 
 walk f (Application a b) = f [a, b]
+
+
+instance Scope Program where
+  freeVars (Program defs expr) = progFreeVars [] defs expr
+
+progFreeVars :: [String] -> [Definition] -> Exp -> Set String
+progFreeVars env [] expr = freeVars expr `removeAll` env
+progFreeVars env (Def name body : defs) expr = (freeVars body `removeAll` newEnv) `Set.union` progFreeVars newEnv defs expr
+  where
+    newEnv = name : env
+
+instance Scope Exp where
+  freeVars (Var name) = Set.singleton name
+  freeVars (Lambda args body) = freeVars body `removeAll` args
+  freeVars (Let bindings body) = foldr (Set.union . freeVars . snd) bodyVars bindings
+    where
+      bodyVars = freeVars body `removeAll` map fst bindings
+  freeVars (Letrec name binding body) = Set.delete name $ freeVars binding `Set.union` freeVars body
+  freeVars expr = walk (Set.unions . map freeVars) expr
+
+removeAll :: Ord a => Set a -> [a] -> Set a
+removeAll = foldr Set.delete

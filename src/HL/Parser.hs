@@ -6,14 +6,22 @@ import Control.Monad (void)
 import qualified Data.Bifunctor as Bifunctor (first)
 
 parseHL :: String -> Either String Program
-parseHL = Bifunctor.first show . parse programP "input"
+parseHL = Bifunctor.first show . lexParse
 
 type Parser a = Parsec String () a
+
+lexParse :: String -> Either ParseError Program
+lexParse input = parse commentP name input >>= parse programP name
+  where
+    name = "input"
+
+commentP :: Parser String
+commentP = concat <$> sepEndBy (many (noneOf ";")) (many (noneOf "\n\r"))
 
 -- <prg> ::= <def> ... <exp>
 --
 -- <def> ::= (define <var> <exp>)
---        |  (define (<var> <var> ...) <exp>)
+--        |  (define (<var> <arg> ...) <exp>)
 --
 -- <exp> ::= <var>
 --
@@ -33,7 +41,7 @@ type Parser a = Parsec String () a
 --        |  (/ <exp> <exp>)
 --        |  (even? <exp>)
 --
---        |  (λ (<var> ...) <exp>)
+--        |  (λ (<arg> ...) <exp>)
 --        |  (let ((<var> <exp>) ...) <exp>)
 --        |  (letrec (<var> <exp>) <exp>)
 --
@@ -45,6 +53,8 @@ type Parser a = Parsec String () a
 --        |  '()
 --
 --        |  (<exp> <exp> ...)
+--
+-- <arg> ::= _ | <var>
 
 programP :: Parser Program
 -- programP = expressionP <* eof
@@ -62,7 +72,7 @@ definitionP = inParens $ do
       body <- expressionP
       return $ Def name body
     defFun = do
-      (name, args) <- inParens ((,) <$> (identifierP <* whitespace) <*> sepEndBy identifierP whitespace)
+      (name, args) <- inParens ((,) <$> (identifierP <* whitespace) <*> sepEndBy argP whitespace)
       whitespace
       body <- expressionP
       return . Def name $ Lambda args body
@@ -111,7 +121,7 @@ lamP :: Parser Exp
 lamP = inParens $ do
   _ <- word "lambda" <|> word "λ"
   whitespace
-  args <- inParens (sepEndBy1 identifierP whitespace)
+  args <- inParens (sepEndBy1 argP whitespace)
   whitespace
   body <- expressionP
   return $ Lambda args body
@@ -158,6 +168,9 @@ identifierP :: Parser String
 identifierP = (:) <$> (lower <|> symbols) <*> many (alphaNum <|> symbols)
   where
     symbols = oneOf "!@#$%^&*+-=<>?/~"
+
+argP :: Parser String
+argP = word "_" <|> identifierP
 
 whitespace :: Parser ()
 whitespace = void $ many1 space

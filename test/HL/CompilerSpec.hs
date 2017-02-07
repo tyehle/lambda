@@ -4,7 +4,7 @@ import HL.Compiler
 import HL.AST
 import Node
 import Interpreter
-import Extraction (Extractor, runExtractor, intExtractor)
+import Extraction (Extractor, runExtractor, intExtractor, listExtractor, boolExtractor)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -126,18 +126,37 @@ numTests = testGroup "Num Tests"
 lambdaTests :: TestTree
 lambdaTests = testGroup "Lambda Tests"
   [ test 1 (Lambda ["a", "b"] (Var "a" `Application` Var "b")) $ Lam "a" $ Lam "b" $ Ref "a" `App` Ref "b"
-  , test 2 (Let [] idE) idN
-  , test 3 (Let [("x", VTrue)] (Var "x")) $ Lam "x" (Ref "x") `App` true
-  , test 4 (Let [("x", VTrue), ("y", VFalse)] (Var "x")) $
+  , testRun 2 (Lambda ["a", "b"] (Var "b") `Application` Var "c" `Application` idE) idN
+  , test 3 (Let [] idE) idN
+  , test 4 (Let [("x", VTrue)] (Var "x")) $ Lam "x" (Ref "x") `App` true
+  , test 5 (Let [("x", VTrue), ("y", VFalse)] (Var "x")) $
       Lam "x" (Lam "y" (Ref "x") `App` false) `App` true
-  , testRun 5 (Let [("x", VTrue), ("y", VFalse)] (Var "x")) true
+  , testRun 6 (Let [("x", VTrue), ("y", VFalse)] (Var "x")) true
+  , testRun 7 (Letrec "f" (Lambda ["a"]
+                            (If (Var "a")
+                                VTrue
+                                (Var "f" `Application` Not (Var "a"))))
+                (Var "f" `Application` VFalse))
+              true
   ]
+
 
 listTests :: TestTree
 listTests = testGroup "List Tests"
-  []
+  [ testExtract 1 (listExtractor intExtractor) (Cons (Num 0) VEmpty) [0]
+  , testExtract 2 (listExtractor intExtractor) (Cons (Num 0) (Cons (Num 1) VEmpty)) [0, 1]
+  , testExtract 3 (listExtractor intExtractor) VEmpty []
+  , testExtract 4 intExtractor (Head (Cons (Num 0) VEmpty)) 0
+  , testExtract 5 (listExtractor intExtractor) (Tail (Cons (Num 0) VEmpty)) []
+  , testExtract 6 boolExtractor (IsPair VEmpty) False
+  , testExtract 7 boolExtractor (IsPair (Cons VFalse VEmpty)) True
+  , testExtract 8 boolExtractor (IsNull VEmpty) True
+  , testExtract 9 boolExtractor (IsNull (Cons VFalse VEmpty)) False
+  ]
 
 
 appTests :: TestTree
 appTests = testGroup "Application Tests"
-  []
+  [ test 1 (Var "a" `Application` Var "b") $ Ref "a" `App` Ref "b"
+  , testRun 2 (idE `Application` VTrue) true
+  ]

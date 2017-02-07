@@ -1,11 +1,19 @@
 module Node where
 
+import qualified Data.Set as Set
+
 import Pretty
+import Scope
 
 data Node = Lam String Node
           | Ref String
           | App Node Node
           deriving (Show, Eq)
+
+instance Scope Node where
+  freeVars (Lam arg body) = Set.delete arg $ freeVars body
+  freeVars (Ref name) = Set.singleton name
+  freeVars (App f x) = freeVars f `Set.union` freeVars x
 
 instance Pretty Node where
   pretty (Lam arg body) = "λ" ++ arg ++ "." ++ pretty body

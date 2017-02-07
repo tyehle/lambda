@@ -14,7 +14,7 @@ test n input expected = testCase (show n) assertion
 interpTests :: TestTree
 interpTests = testGroup "Interp Tests"
   [ test 1 "(\\a a . a) \\x.x" "\\a.a"
-  , test 2 "(\\a b . a) \\x.x" "\\b.\\x.x"
+  , test 2 "(\\a b . a) (\\x.x) z" "\\x.x"
   , test 3 "\\x.x" "\\x.x"
   , test 4 "(\\a.a a) \\x.x" "\\x.x"
   ]
