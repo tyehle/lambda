@@ -13,6 +13,8 @@ This is fun. You like it.
 Using the Code
 --------------
 
+You will need [stack](https://docs.haskellstack.org/en/stable/README).
+
 ### Build the project
 ```
 $> stack build
