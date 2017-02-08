@@ -39,6 +39,13 @@ testExtract :: (Eq a, Show a) => Integer -> Extractor a -> String -> a -> TestTr
 testExtract n ex = testWithDefs ((>>= runExtractor ex) . interp . compileExp) n
 
 
+true :: Node
+true = Lam "t" $ Lam "f" $ Ref "t"
+
+false :: Node
+false = Lam "t" $ Lam "f" $ Ref "f"
+
+
 variableTests :: TestTree
 variableTests = testGroup "Variable Tests"
   [ test 1 "x" (Ref "x")
@@ -46,14 +53,13 @@ variableTests = testGroup "Variable Tests"
 
 boolTests :: TestTree
 boolTests = testGroup "Bool Tests"
-  [ test 1 "#t" $ Lam "t" $ Lam "f" $ Ref "t"
-  , test 2 "#f" $ Lam "t" $ Lam "f" $ Ref "f"
+  [ testRun 1 "#t" $ Lam "t" $ Lam "f" $ Ref "t"
+  , testRun 2 "#f" $ Lam "t" $ Lam "f" $ Ref "f"
 
   , testGroup "If Tests"
-      [ test 1 "(if #f a b)" $
-          (false `App` Lam "y" (Ref "a") `App` Lam "y" (Ref "b")) `App` Lam "x" (Ref "x")
-      , testRun 2 "(if #t (λ (i) i) x)" $ Lam "i" (Ref "i")
-      , testRun 3 "(if #f x (λ (i) i))" $ Lam "i" (Ref "i")
+      [ testRun 1 "(if #t (λ (i) i) x)" $ Lam "i" (Ref "i")
+      , testRun 2 "(if #f x (λ (i) i))" $ Lam "i" (Ref "i")
+      , testRun 3 "(if (id #t) (λ (i) i) x)" $ Lam "i" (Ref "i")
       ]
 
   , testGroup "And Tests"
@@ -80,7 +86,6 @@ numTests = testGroup "Num Tests"
   , testGroup "IsZero Tests"
     [ testRun 1 "(zero? 0)" true
     , testRun 2 "(zero? 42)" false
-    , test 3 "(zero? 0)" $ Lam "f" (Lam "x" (Ref "x")) `App` Lam "x" false `App` true
     ]
 
   , testGroup "Eq Tests"
@@ -93,9 +98,6 @@ numTests = testGroup "Num Tests"
       [ testRun 1 "(even? 0)" true
       , testRun 2 "(even? 1)" false
       , testRun 3 "(even? 42)" true
-      , test 4 "(even? 1)" $ Lam "f" (Lam "x" (Ref "f" `App` Ref "x"))
-          `App` Lam "x" (Ref "x" `App` false `App` true)
-          `App` true
       ]
 
   , testGroup "Plus Tests"
@@ -130,9 +132,9 @@ lambdaTests = testGroup "Lambda Tests"
   [ test 1 "(λ (a b) (a b))" $ Lam "a" $ Lam "b" $ Ref "a" `App` Ref "b"
   , testRun 2 "((λ (a b) b) c (λ (i) i))" $ Lam "i" (Ref "i")
   , test 3 "(let [] (λ (i) i))" $ Lam "i" (Ref "i")
-  , test 4 "(let [(x #t)] x)" $ Lam "x" (Ref "x") `App` true
-  , test 5 "(let [(x #t) (y #f)] x)" $
-      Lam "x" (Lam "y" (Ref "x") `App` false) `App` true
+  , test 4 "(let [(x u)] x)" $ Lam "x" (Ref "x") `App` Ref "u"
+  , test 5 "(let [(x u) (y v)] x)" $
+      Lam "x" (Lam "y" (Ref "x") `App` Ref "v") `App` Ref "u"
   , testRun 6 "(let [(x #t) (y #f)] x)" true
   , testRun 7 "(letrec (f (λ (a) (if a #t (f (not a))))) (f #f))" true
   ]
