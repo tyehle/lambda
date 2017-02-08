@@ -3,8 +3,9 @@ module Main where
 import Node (Node)
 import Extraction (extractInt, Extractor, runExtractor)
 import Interpreter (interp)
-import HL.Compiler (compile)
+import HL.Compiler (compile, checkScope, compileExp, desugarDefs)
 import HL.Parser (parseProgram)
+import HL.Base (readBase)
 
 
 main :: IO ()
@@ -18,4 +19,10 @@ pipeline program = parseProgram "input" program >>= compile >>= interp
 runFile :: Show a => String -> Extractor a -> IO ()
 runFile filename extractor = do
   input <- readFile filename
-  either putStrLn print $ pipeline input >>= runExtractor extractor
+  base <- readBase
+  either putStrLn print $ do
+    defs <- base
+    prog <- parseProgram filename input
+    compiled <- (checkScope . compileExp . desugarDefs defs) prog
+    reduced <- interp compiled
+    runExtractor extractor reduced

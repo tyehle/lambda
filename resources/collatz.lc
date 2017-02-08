@@ -1,15 +1,3 @@
-(define (<= a b)
-  (zero? (- a b)))
-
-(define (>= a b)
-  (zero? (- b a)))
-
-(define (< a b)
-  (<= (+ 1 a) b))
-
-(define (> a b)
-  (>= a (+ 1 b)))
-
 (define (step n)
   (if (even? n)
       (/ n 2)
@@ -20,16 +8,4 @@
       0
       (+ 1 (collatz (step n)))))
 
-(define (map f xs)
-  (if (null? xs)
-      xs
-      (cons (f (head xs)) (map f (tail xs)))))
-
-(define (range low high)
-  (if (>= low high)
-      ()
-      (cons low
-            (range (+ 1 low)
-                   high))))
-
-(map collatz (range 0 10))
+(map collatz (range 0 15))
