@@ -15,7 +15,16 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Interpreter, Parser, Node, Extraction, Scope, Pretty, HL.Compiler, HL.AST, HL.Parser
+  exposed-modules:     Interpreter
+                     , Parser
+                     , Node
+                     , Extraction
+                     , Scope
+                     , Pretty
+                     , HL.Compiler
+                     , HL.AST
+                     , HL.Parser
+                     , HL.Base
   build-depends:       base >= 4.7 && < 5
                      , parsec
                      , containers

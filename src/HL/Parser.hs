@@ -1,22 +1,23 @@
-module HL.Parser (parseHL) where
+module HL.Parser (parseProgram, parseModule) where
 
 import HL.AST
 import Text.Parsec
 import Control.Monad (void)
 import qualified Data.Bifunctor as Bifunctor (first)
 
-parseHL :: String -> Either String Program
-parseHL = Bifunctor.first show . lexParse
+parseProgram :: String -> String -> Either String Program
+parseProgram name = Bifunctor.first show . lexParse programP name
+
+parseModule :: String -> String -> Either String [Definition]
+parseModule name = Bifunctor.first show . lexParse moduleP name
 
 type Parser a = Parsec String () a
 
-lexParse :: String -> Either ParseError Program
-lexParse input = parse commentP name input >>= parse programP name
-  where
-    name = "input"
+lexParse :: Parser a -> String -> String -> Either ParseError a
+lexParse p name input = parse commentP name input >>= parse p name
 
 commentP :: Parser String
-commentP = concat <$> sepEndBy (many (noneOf ";")) (many (noneOf "\n\r"))
+commentP = concat <$> sepEndBy (many (noneOf ";")) (char ';' *> many (noneOf "\n\r"))
 
 -- <prg> ::= <def> ... <exp>
 --
@@ -50,15 +51,17 @@ commentP = concat <$> sepEndBy (many (noneOf ";")) (many (noneOf "\n\r"))
 --        |  (tail <exp>)
 --        |  (pair? <exp>)
 --        |  (null? <exp>)
---        |  '()
+--        |  () | empty
 --
 --        |  (<exp> <exp> ...)
 --
 -- <arg> ::= _ | <var>
 
+moduleP :: Parser [Definition]
+moduleP = spaces *> sepEndBy definitionP whitespace <* eof
+
 programP :: Parser Program
--- programP = expressionP <* eof
-programP = Program <$> sepEndBy (try definitionP) whitespace <*> expressionP <* spaces <* eof
+programP = Program <$> (spaces *> sepEndBy (try definitionP) whitespace) <*> expressionP <* spaces <* eof
 
 definitionP :: Parser Definition
 definitionP = inParens $ do
@@ -104,7 +107,7 @@ expressionP =  (word "#t" *> return VTrue)
            <|> try (fn1 "tail" Tail)
            <|> try (fn1 "pair?" IsPair)
            <|> try (fn1 "null?" IsNull)
-           <|> try (word "()" *> return VEmpty)
+           <|> try ((word "()" <|> word "empty") *> return VEmpty)
            <|> try appP
 
            <|> Var <$> try identifierP
@@ -130,7 +133,7 @@ letP :: Parser Exp
 letP = inParens $ do
   _ <- word "let"
   whitespace
-  bindings <- inParens (sepEndBy1 (inParens ((,) <$> (identifierP <* whitespace) <*> expressionP)) whitespace)
+  bindings <- inParens (sepEndBy (inParens ((,) <$> (identifierP <* whitespace) <*> expressionP)) whitespace)
   whitespace
   Let bindings <$> expressionP
 
@@ -179,4 +182,8 @@ word :: String -> Parser String
 word = try . string
 
 inParens :: Parser a -> Parser a
-inParens p = char '(' *> spaces *> p <* spaces <* char ')'
+inParens p  =  char '(' *> inner <* char ')'
+           <|> char '[' *> inner <* char ']'
+           <|> char '{' *> inner <* char '}'
+  where
+    inner = spaces *> p <* spaces

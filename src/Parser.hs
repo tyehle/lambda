@@ -4,8 +4,8 @@ import Node
 
 import Text.Parsec
 
-parseProgram :: String -> Node
-parseProgram = either (error . show) id . parse program "input"
+parseNode :: String -> Node
+parseNode = either (error . show) id . parse program "input"
 
 program :: Parsec String () Node
 program = factor <* eof

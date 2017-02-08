@@ -2,6 +2,8 @@ module HL.CompilerSpec (compilerTests) where
 
 import HL.Compiler
 import HL.AST
+import HL.Base (readBase)
+import HL.Parser (parseProgram)
 import Node
 import Interpreter
 import Extraction (Extractor, runExtractor, intExtractor, listExtractor, boolExtractor)
@@ -19,144 +21,139 @@ compilerTests = testGroup "Compiler Tests"
   , appTests
   ]
 
-test :: Integer -> Exp -> Node -> TestTree
-test n input expected = testCase (show n) $ compileExp input @?= expected
-
-testRun :: Integer -> Exp -> Node -> TestTree
-testRun n input expected = testCase (show n) assertion
+testWithDefs :: (Eq a, Show a) => (Exp -> Either String a) -> Integer -> String -> a -> TestTree
+testWithDefs reduce n input expected = testCase (show n) assertion
   where
-    assertion = (interp . compileExp) input @?= Right expected
+    assertion = do
+      defs <- readBase
+      let expr = desugarDefs <$> defs <*> parseProgram "test input" input
+      either assertFailure (@?= expected) (expr >>= reduce)
 
-testExtract :: (Eq a, Show a) => Integer -> Extractor a -> Exp -> a -> TestTree
-testExtract n ex input expected = testCase (show n) assertion
-  where
-    assertion = ((interp . compileExp) input >>= runExtractor ex) @?= Right expected
+test :: Integer -> String -> Node -> TestTree
+test = testWithDefs (Right . compileExp)
 
-idE :: Exp
-idE = Lambda ["i"] $ Var "i"
-idN :: Node
-idN = Lam "i" $ Ref "i"
+testRun :: Integer -> String -> Node -> TestTree
+testRun = testWithDefs (interp . compileExp)
+
+testExtract :: (Eq a, Show a) => Integer -> Extractor a -> String -> a -> TestTree
+testExtract n ex = testWithDefs ((>>= runExtractor ex) . interp . compileExp) n
+
 
 variableTests :: TestTree
 variableTests = testGroup "Variable Tests"
-  [ test 1 (Var "x") (Ref "x")
+  [ test 1 "x" (Ref "x")
   ]
 
 boolTests :: TestTree
 boolTests = testGroup "Bool Tests"
-  [ test 1 VTrue $ Lam "t" $ Lam "f" $ Ref "t"
-  , test 2 VFalse $ Lam "t" $ Lam "f" $ Ref "f"
+  [ test 1 "#t" $ Lam "t" $ Lam "f" $ Ref "t"
+  , test 2 "#f" $ Lam "t" $ Lam "f" $ Ref "f"
 
   , testGroup "If Tests"
-      [ test 1 (If VFalse (Var "a") (Var "b")) $
+      [ test 1 "(if #f a b)" $
           (false `App` Lam "y" (Ref "a") `App` Lam "y" (Ref "b")) `App` Lam "x" (Ref "x")
-      , testRun 2 (If VTrue idE (Var "x")) idN
-      , testRun 3 (If VFalse (Var "x") idE) idN
+      , testRun 2 "(if #t (λ (i) i) x)" $ Lam "i" (Ref "i")
+      , testRun 3 "(if #f x (λ (i) i))" $ Lam "i" (Ref "i")
       ]
 
   , testGroup "And Tests"
-      [ testRun 1 (And VTrue VFalse) false
-      , testRun 2 (And VFalse (Var "x")) false
+      [ testRun 1 "(and #t #f)" false
+      , testRun 2 "(and #f x)" false
       ]
 
   , testGroup "Or Tests"
-      [ testRun 1 (Or VFalse VTrue) true
-      , testRun 2 (Or VTrue (Var "x")) true
+      [ testRun 1 "(or #f #t)" true
+      , testRun 2 "(or #t x)" true
       ]
 
   , testGroup "Not Tests"
-      [ testRun 1 (Not VFalse) true
-      , testRun 2 (Not VTrue) false
+      [ testRun 1 "(not #f)" true
+      , testRun 2 "(not #t)" false
       ]
   ]
 
 numTests :: TestTree
 numTests = testGroup "Num Tests"
-  [ test 1 (Num 0) $ Lam "f" $ Lam "x" $ Ref "x"
-  , test 2 (Num 2) $ Lam "f" $ Lam "x" $ Ref "f" `App` (Ref "f" `App` Ref "x")
+  [ test 1 "0" $ Lam "f" $ Lam "x" $ Ref "x"
+  , test 2 "2" $ Lam "f" $ Lam "x" $ Ref "f" `App` (Ref "f" `App` Ref "x")
 
   , testGroup "IsZero Tests"
-    [ testRun 1 (IsZero (Num 0)) true
-    , testRun 2 (IsZero (Num 42)) false
-    , test 3 (IsZero (Num 0)) $ Lam "f" (Lam "x" (Ref "x")) `App` Lam "x" false `App` true
+    [ testRun 1 "(zero? 0)" true
+    , testRun 2 "(zero? 42)" false
+    , test 3 "(zero? 0)" $ Lam "f" (Lam "x" (Ref "x")) `App` Lam "x" false `App` true
     ]
 
   , testGroup "Eq Tests"
-    [ testRun 1 (Eq (Num 1) (Num 0)) false
-    , testRun 2 (Eq (Num 0) (Num 1)) false
-    , testRun 3 (Eq (Num 2) (Num 2)) true
+    [ testRun 1 "(= 1 0)" false
+    , testRun 2 "(= 0 1)" false
+    , testRun 3 "(= 2 2)" true
     ]
 
   , testGroup "IsEven Tests"
-      [ testRun 1 (IsEven (Num 0)) true
-      , testRun 2 (IsEven (Num 1)) false
-      , testRun 3 (IsEven (Num 42)) true
-      , test 4 (IsEven (Num 1)) $ Lam "f" (Lam "x" (Ref "f" `App` Ref "x"))
+      [ testRun 1 "(even? 0)" true
+      , testRun 2 "(even? 1)" false
+      , testRun 3 "(even? 42)" true
+      , test 4 "(even? 1)" $ Lam "f" (Lam "x" (Ref "f" `App` Ref "x"))
           `App` Lam "x" (Ref "x" `App` false `App` true)
           `App` true
       ]
 
   , testGroup "Plus Tests"
-      [ testExtract 1 intExtractor (Plus (Num 2) (Num 3)) 5
-      , testExtract 2 intExtractor (Plus (Num 0) (Num 2)) 2
-      , testExtract 3 intExtractor (Plus (Num 3) (Num 0)) 3
+      [ testExtract 1 intExtractor "(+ 2 3)" 5
+      , testExtract 2 intExtractor "(+ 0 2)" 2
+      , testExtract 3 intExtractor "(+ 3 0)" 3
       ]
 
   , testGroup "Mult Tests"
-      [ testExtract 1 intExtractor (Mult (Num 2) (Num 3)) 6
-      , testExtract 2 intExtractor (Mult (Num 0) (Num 2)) 0
-      , testExtract 3 intExtractor (Mult (Num 3) (Num 0)) 0
-      , testExtract 4 intExtractor (Mult (Num 1) (Num 5)) 5
+      [ testExtract 1 intExtractor "(* 2 3)" 6
+      , testExtract 2 intExtractor "(* 0 2)" 0
+      , testExtract 3 intExtractor "(* 3 0)" 0
+      , testExtract 4 intExtractor "(* 1 5)" 5
       ]
 
   , testGroup "Minus Tests"
-      [ testExtract 1 intExtractor (Minus (Num 2) (Num 3)) 0
-      , testExtract 2 intExtractor (Minus (Num 3) (Num 2)) 1
-      , testExtract 3 intExtractor (Minus (Num 5) (Num 5)) 0
+      [ testExtract 1 intExtractor "(- 2 3)" 0
+      , testExtract 2 intExtractor "(- 3 2)" 1
+      , testExtract 3 intExtractor "(- 5 5)" 0
       ]
 
-  , testGroup "Divde Tests"
-      [ testExtract 1 intExtractor (Divide (Num 1) (Num 2)) 0
-      , testExtract 2 intExtractor (Divide (Num 2) (Num 2)) 1
-      , testExtract 3 intExtractor (Divide (Num 3) (Num 2)) 1
-      , testExtract 4 intExtractor (Divide (Num 4) (Num 2)) 2
+  , testGroup "Divide Tests"
+      [ testExtract 1 intExtractor "(/ 1 2)" 0
+      , testExtract 2 intExtractor "(/ 2 2)" 1
+      , testExtract 3 intExtractor "(/ 3 2)" 1
+      , testExtract 4 intExtractor "(/ 4 2)" 2
       ]
   ]
 
 lambdaTests :: TestTree
 lambdaTests = testGroup "Lambda Tests"
-  [ test 1 (Lambda ["a", "b"] (Var "a" `Application` Var "b")) $ Lam "a" $ Lam "b" $ Ref "a" `App` Ref "b"
-  , testRun 2 (Lambda ["a", "b"] (Var "b") `Application` Var "c" `Application` idE) idN
-  , test 3 (Let [] idE) idN
-  , test 4 (Let [("x", VTrue)] (Var "x")) $ Lam "x" (Ref "x") `App` true
-  , test 5 (Let [("x", VTrue), ("y", VFalse)] (Var "x")) $
+  [ test 1 "(λ (a b) (a b))" $ Lam "a" $ Lam "b" $ Ref "a" `App` Ref "b"
+  , testRun 2 "((λ (a b) b) c (λ (i) i))" $ Lam "i" (Ref "i")
+  , test 3 "(let [] (λ (i) i))" $ Lam "i" (Ref "i")
+  , test 4 "(let [(x #t)] x)" $ Lam "x" (Ref "x") `App` true
+  , test 5 "(let [(x #t) (y #f)] x)" $
       Lam "x" (Lam "y" (Ref "x") `App` false) `App` true
-  , testRun 6 (Let [("x", VTrue), ("y", VFalse)] (Var "x")) true
-  , testRun 7 (Letrec "f" (Lambda ["a"]
-                            (If (Var "a")
-                                VTrue
-                                (Var "f" `Application` Not (Var "a"))))
-                (Var "f" `Application` VFalse))
-              true
+  , testRun 6 "(let [(x #t) (y #f)] x)" true
+  , testRun 7 "(letrec (f (λ (a) (if a #t (f (not a))))) (f #f))" true
   ]
 
 
 listTests :: TestTree
 listTests = testGroup "List Tests"
-  [ testExtract 1 (listExtractor intExtractor) (Cons (Num 0) VEmpty) [0]
-  , testExtract 2 (listExtractor intExtractor) (Cons (Num 0) (Cons (Num 1) VEmpty)) [0, 1]
-  , testExtract 3 (listExtractor intExtractor) VEmpty []
-  , testExtract 4 intExtractor (Head (Cons (Num 0) VEmpty)) 0
-  , testExtract 5 (listExtractor intExtractor) (Tail (Cons (Num 0) VEmpty)) []
-  , testExtract 6 boolExtractor (IsPair VEmpty) False
-  , testExtract 7 boolExtractor (IsPair (Cons VFalse VEmpty)) True
-  , testExtract 8 boolExtractor (IsNull VEmpty) True
-  , testExtract 9 boolExtractor (IsNull (Cons VFalse VEmpty)) False
+  [ testExtract 1 (listExtractor intExtractor) "(cons 0 empty)" [0]
+  , testExtract 2 (listExtractor intExtractor) "(cons 0 (cons 1 empty))" [0, 1]
+  , testExtract 3 (listExtractor intExtractor) "empty" []
+  , testExtract 4 intExtractor "(head (cons 0 empty))" 0
+  , testExtract 5 (listExtractor intExtractor) "(tail (cons 0 empty))" []
+  , testExtract 6 boolExtractor "(pair? empty)" False
+  , testExtract 7 boolExtractor "(pair? (cons #f empty))" True
+  , testExtract 8 boolExtractor "(null? empty)" True
+  , testExtract 9 boolExtractor "(null? (cons #f empty))" False
   ]
 
 
 appTests :: TestTree
 appTests = testGroup "Application Tests"
-  [ test 1 (Var "a" `Application` Var "b") $ Ref "a" `App` Ref "b"
-  , testRun 2 (idE `Application` VTrue) true
+  [ test 1 "(a b)" $ Ref "a" `App` Ref "b"
+  , testRun 2 "((λ (x) x) #t)" true
   ]

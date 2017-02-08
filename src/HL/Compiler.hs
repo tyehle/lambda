@@ -4,8 +4,9 @@ import HL.AST
 import Node
 import Scope
 
-import Data.Set (member)
 
+compile :: Program -> Either String Node
+compile = checkScope . compileExp . desugarProgram
 
 checkScope :: (Scope a) => a -> Either String a
 checkScope input = maybe (Right input) (Left . msg) . toMaybe . freeVars $ input
@@ -13,15 +14,17 @@ checkScope input = maybe (Right input) (Left . msg) . toMaybe . freeVars $ input
     msg name = "Variable not in scope: " ++ name
     toMaybe = foldr (\e _ -> Just e) Nothing
 
-compile :: Program -> Either String Node
-compile = checkScope . compileExp . desugarProgram
+desugarDefs :: [Definition] -> Program -> Exp
+desugarDefs baseDefs (Program defs expr) = desugarProgram $ Program (baseDefs ++ defs) expr
 
 desugarProgram :: Program -> Exp
 desugarProgram (Program ds e) = foldr defToLet e ds
   where
-    defToLet (Def name expr) body = if name `member` freeVars expr
-                                    then Letrec name expr body
-                                    else Let [(name, expr)] body
+    defToLet (Def name expr) body = if isFree name body
+                                    then if isFree name expr
+                                         then Letrec name expr body
+                                         else Let [(name, expr)] body
+                                    else body
 
 compileExp :: Exp -> Node
 compileExp (Var name) = Ref name

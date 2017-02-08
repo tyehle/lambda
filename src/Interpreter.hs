@@ -2,7 +2,6 @@ module Interpreter where
 
 import Data.Map.Lazy (Map)
 import qualified Data.Map.Lazy as Map
-import qualified Data.Set as Set
 import Data.Maybe (fromMaybe)
 
 import Scope
@@ -47,6 +46,6 @@ undoClosures (IRef x) = Ref x
 undoClosures (IApp f x) = App (undoClosures f) (undoClosures x)
 undoClosures (IClos env arg body) = Lam arg $ Map.foldlWithKey' letBind body (Map.delete arg env)
   where
-    letBind expr name inode | name `Set.member` freeVars expr = Lam name expr `App` undoClosures inode
+    letBind expr name inode | isFree name expr = Lam name expr `App` undoClosures inode
                             | otherwise = expr
     -- reduceAndSubst expr name inode = doSubst name (undoClosures inode) expr
