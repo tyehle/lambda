@@ -6,7 +6,7 @@ import Scope
 
 
 compile :: Program -> Either String Node
-compile = checkScope . compileExp . desugarProgram
+compile = fmap compileExp . checkScope . desugarProgram
 
 checkScope :: (Scope a) => a -> Either String a
 checkScope input = maybe (Right input) (Left . msg) . toMaybe . freeVars $ input
