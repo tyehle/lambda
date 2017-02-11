@@ -29,22 +29,33 @@
 ;; Numbers
 
 (define (zero? n) (n (const #f) #t))
+(define (succ n) (λ (f x) (f (n f x))))
+(define (prev n)
+  (λ (f x) (n (λ (g h) (h (g f)))
+              (const x)
+              id)))
+
 (define (+ a b) (λ (f x) ((a f) (b f x))))
 (define (* a b) (λ (f) (a (b f))))
-(define (- a b)
-  (let ((prev (λ (n) (λ (f x) (n (λ (g h) (h (g f)))
-                                 (const x)
-                                 id)))))
-    (b prev a)))
+(define (- a b) (b prev a))
 (define (/ n m)
-  (letrec (div1 (lambda (n1 m1)
-                   (let ([diff (- n1 m1)])
-                     (if (zero? diff)
-                         0
-                         (+ 1 (div1 diff m1))))))
-    (div1 (+ 1 n) m)))
+  (letrec (div1 (λ (n1 m1)
+                  (let ([diff (- n1 m1)])
+                    (if (zero? diff)
+                        0
+                        (succ (div1 diff m1))))))
+    (div1 (succ n) m)))
+
 (define (= a b) (and (zero? (- a b)) (zero? (- b a))))
 (define (even? n) (n not #t))
+
+(define (mod n m)
+  (letrec (mod1 (λ (n1 m1)
+                  (let ([diff (- n1 m1)])
+                    (if (zero? diff)
+                        n1
+                        (mod1 diff m1)))))
+    (prev (mod1 (succ n) m))))
 
 (define (<= a b)
   (zero? (- a b)))
@@ -85,6 +96,14 @@
   (if (null? xs)
       xs
       (cons (f (head xs)) (map f (tail xs)))))
+
+(define (take n l)
+  (if (or (zero? n) (null? l))
+      empty
+      (cons (head l) (take (prev n) (tail l)))))
+
+(define (from n)
+  (cons n (from (succ n))))
 
 (define (range low high)
   (if (>= low high)
