@@ -15,7 +15,9 @@ checkScope input = maybe (Right input) (Left . msg) . toMaybe . freeVars $ input
     toMaybe = foldr (\e _ -> Just e) Nothing
 
 desugarDefs :: [Definition] -> Program -> Exp
-desugarDefs baseDefs (Program defs expr) = desugarProgram $ Program (baseDefs ++ defs) expr
+desugarDefs baseDefs (Program defs expr) = desugarProgram newProg
+  where
+    newProg = Program (baseDefs ++ defs) expr
 
 desugarProgram :: Program -> Exp
 desugarProgram (Program ds e) = foldr defToLet e ds
@@ -32,8 +34,12 @@ compileExp (Var name) = Ref name
 compileExp (Num n) = churchNum n
 compileExp (Lambda args body) = foldr Lam (compileExp body) args
 compileExp (Let [] body) = compileExp body
-compileExp (Let ((n,v):rest) body) = Lam n (compileExp (Let rest body)) `App` compileExp v
-compileExp (Letrec name binding body) = compileExp $ Let [(name, y `Application` Lambda [name] binding)] body
+compileExp (Let ((n,v):rest) body) = Lam n inner `App` compileExp v
+  where
+    inner = compileExp (Let rest body)
+compileExp (Letrec name binding body) = compileExp recursiveLet
+  where
+    recursiveLet = Let [(name, y `Application` Lambda [name] binding)] body
 
 compileExp (Application a b) = compileExp a `App` compileExp b
 
@@ -43,7 +49,10 @@ y :: Exp
 y = term `Application` term
   where
     term = Lambda ["y", "F"] $ Var "F" `Application` Lambda ["x"] innerApp
-    innerApp = Var "y" `Application` Var "y" `Application` Var "F" `Application` Var "x"
+    innerApp = Var "y" `Application`
+               Var "y" `Application`
+               Var "F" `Application`
+               Var "x"
 -- let fn = \arg.( ... fn ... )
 -- let fn = (\rec. \arg.( ... rec ... )) fn
 -- let fn = (\rec. \arg.( ... rec ... )) (\rec. \arg.( ... rec ... ))
