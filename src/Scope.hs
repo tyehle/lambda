@@ -8,3 +8,6 @@ class Scope a where
 
 isFree :: Scope e => String -> e -> Bool
 isFree name expr = name `Set.member` freeVars expr
+
+scopeError :: String -> Either String a
+scopeError name = Left $ "Variable not in scope: " ++ name

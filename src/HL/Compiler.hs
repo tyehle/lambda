@@ -9,9 +9,8 @@ compile :: Program -> Either String Node
 compile = fmap compileExp . checkScope . desugarProgram
 
 checkScope :: (Scope a) => a -> Either String a
-checkScope input = maybe (Right input) (Left . msg) . toMaybe . freeVars $ input
+checkScope input = maybe (Right input) scopeError . toMaybe . freeVars $ input
   where
-    msg name = "Variable not in scope: " ++ name
     toMaybe = foldr (\e _ -> Just e) Nothing
 
 desugarDefs :: [Definition] -> Program -> Exp

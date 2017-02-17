@@ -1,6 +1,7 @@
 module Extraction where
 
 import Node
+import Scope
 
 type InterpError = String
 type Extractor a = Result -> Either InterpError a
@@ -28,7 +29,7 @@ toAug (App f x) = toAug f `AApp` toAug x
 
 interpAug :: Env -> Aug -> Either InterpError Result
 interpAug e (ALam x body) = Right $ RClos e x body
-interpAug e (ARef x) = maybe (Left $ x ++ " not in scope") Right (lookup x e)
+interpAug e (ARef x) = maybe (scopeError x) Right (lookup x e)
 interpAug _ (ANum n) = Right $ RNum n
 interpAug _ (ABool b) = Right $ RBool b
 interpAug _ (AFun f) = Right $ RFun f
