@@ -72,15 +72,15 @@
 (define (cons h t)
   (λ (f _) (f h t)))
 (define empty
-  (λ (_ e) (e id)))
+  (λ (_ e) e))
 (define (head l)
   (l (λ (h _) h) hang))
 (define (tail l)
   (l (λ (_ t) t) hang))
 (define (pair? l)
-  (l (λ (_ _) #t) (const #f)))
+  (l (λ (_ _) #t) #f))
 (define (null? l)
-  (l (λ (_ _) #f) (const #t)))
+  (l (λ (_ _) #f) #t))
 
 (define (foldl fn acc xs)
   (if (null? xs)

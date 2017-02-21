@@ -19,7 +19,7 @@ data Result s = Clos String Node (Env s)
               | RFun (Result s -> ExceptT String (ST s) (Result s))
               | RNum Integer
               | RBool Bool
-              | RPair (Result s, Result s)
+              | RPair (Result s) (Result s)
               | REmpty
 
 type Env s = Map String (STRef s (Box s))
@@ -90,13 +90,12 @@ boolExtractor res = res `app` Forced (RBool True)
 
 listExtractor :: (Result s -> EST s a) -> Result s -> EST s [a]
 listExtractor ex res = res `app` Forced (RFun onCons)
-                   >>= (`app` Forced (RFun onEmpty))
+                   >>= (`app` Forced REmpty)
                    >>= pairToList
   where
-    onCons hd = return $ RFun (\tl -> return (RPair (hd, tl)))
-    onEmpty _ = return REmpty
+    onCons hd = return . RFun $ return . RPair hd
     pairToList REmpty = return []
-    pairToList (RPair (hd,tl)) = do
+    pairToList (RPair hd tl) = do
       x <- ex hd
       xs <- listExtractor ex tl
       return (x:xs)
