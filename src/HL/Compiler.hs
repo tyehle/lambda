@@ -5,8 +5,8 @@ import Node
 import Scope
 
 
-compile :: Program -> Either String Node
-compile = fmap compileExp . checkScope . desugarProgram
+compile :: [Definition] -> Program -> Either String Node
+compile defs = fmap compileExp . checkScope . desugarDefs defs
 
 checkScope :: (Scope a) => a -> Either String a
 checkScope input = maybe (Right input) scopeError . toMaybe . freeVars $ input
