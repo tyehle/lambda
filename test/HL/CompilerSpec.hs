@@ -5,8 +5,8 @@ import HL.AST
 import HL.Base (readBase)
 import HL.Parser (parseProgram)
 import Node
-import Interpreter
-import Extraction (Extractor, runExtractor, intExtractor, listExtractor, boolExtractor)
+import LazyInterpreter
+-- import Extraction (Extractor, runExtractor, intExtractor, listExtractor, boolExtractor)
 
 import Test.Tasty
 import Test.Tasty.HUnit
@@ -35,8 +35,8 @@ test = testWithDefs (Right . compileExp)
 testRun :: Integer -> String -> Node -> TestTree
 testRun = testWithDefs (interp . compileExp)
 
-testExtract :: (Eq a, Show a) => Integer -> Extractor a -> String -> a -> TestTree
-testExtract n ex = testWithDefs ((>>= runExtractor ex) . interp . compileExp) n
+testExtract :: (Eq a, Show a) => Integer -> (Node -> Either String a) -> String -> a -> TestTree
+testExtract n ex = testWithDefs (ex . compileExp) n
 
 
 true :: Node
@@ -101,29 +101,29 @@ numTests = testGroup "Num Tests"
       ]
 
   , testGroup "Plus Tests"
-      [ testExtract 1 intExtractor "(+ 2 3)" 5
-      , testExtract 2 intExtractor "(+ 0 2)" 2
-      , testExtract 3 intExtractor "(+ 3 0)" 3
+      [ testExtract 1 extractInt "(+ 2 3)" 5
+      , testExtract 2 extractInt "(+ 0 2)" 2
+      , testExtract 3 extractInt "(+ 3 0)" 3
       ]
 
   , testGroup "Mult Tests"
-      [ testExtract 1 intExtractor "(* 2 3)" 6
-      , testExtract 2 intExtractor "(* 0 2)" 0
-      , testExtract 3 intExtractor "(* 3 0)" 0
-      , testExtract 4 intExtractor "(* 1 5)" 5
+      [ testExtract 1 extractInt "(* 2 3)" 6
+      , testExtract 2 extractInt "(* 0 2)" 0
+      , testExtract 3 extractInt "(* 3 0)" 0
+      , testExtract 4 extractInt "(* 1 5)" 5
       ]
 
   , testGroup "Minus Tests"
-      [ testExtract 1 intExtractor "(- 2 3)" 0
-      , testExtract 2 intExtractor "(- 3 2)" 1
-      , testExtract 3 intExtractor "(- 5 5)" 0
+      [ testExtract 1 extractInt "(- 2 3)" 0
+      , testExtract 2 extractInt "(- 3 2)" 1
+      , testExtract 3 extractInt "(- 5 5)" 0
       ]
 
   , testGroup "Divide Tests"
-      [ testExtract 1 intExtractor "(/ 1 2)" 0
-      , testExtract 2 intExtractor "(/ 2 2)" 1
-      , testExtract 3 intExtractor "(/ 3 2)" 1
-      , testExtract 4 intExtractor "(/ 4 2)" 2
+      [ testExtract 1 extractInt "(/ 1 2)" 0
+      , testExtract 2 extractInt "(/ 2 2)" 1
+      , testExtract 3 extractInt "(/ 3 2)" 1
+      , testExtract 4 extractInt "(/ 4 2)" 2
       ]
   ]
 
@@ -142,15 +142,15 @@ lambdaTests = testGroup "Lambda Tests"
 
 listTests :: TestTree
 listTests = testGroup "List Tests"
-  [ testExtract 1 (listExtractor intExtractor) "(cons 0 empty)" [0]
-  , testExtract 2 (listExtractor intExtractor) "(cons 0 (cons 1 empty))" [0, 1]
-  , testExtract 3 (listExtractor intExtractor) "empty" []
-  , testExtract 4 intExtractor "(head (cons 0 empty))" 0
-  , testExtract 5 (listExtractor intExtractor) "(tail (cons 0 empty))" []
-  , testExtract 6 boolExtractor "(pair? empty)" False
-  , testExtract 7 boolExtractor "(pair? (cons #f empty))" True
-  , testExtract 8 boolExtractor "(null? empty)" True
-  , testExtract 9 boolExtractor "(null? (cons #f empty))" False
+  [ testExtract 1 (extractList intExtractor) "(cons 0 empty)" [0]
+  , testExtract 2 (extractList intExtractor) "(cons 0 (cons 1 empty))" [0, 1]
+  , testExtract 3 (extractList intExtractor) "empty" []
+  , testExtract 4 extractInt "(head (cons 0 empty))" 0
+  , testExtract 5 (extractList intExtractor) "(tail (cons 0 empty))" []
+  , testExtract 6 extractBool "(pair? empty)" False
+  , testExtract 7 extractBool "(pair? (cons #f empty))" True
+  , testExtract 8 extractBool "(null? empty)" True
+  , testExtract 9 extractBool "(null? (cons #f empty))" False
   ]
 
 
