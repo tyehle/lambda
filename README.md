@@ -28,5 +28,5 @@ $> stack test
 ### Run an example
 ```
 $> stack ghci
-ghci> runFile "resources/collatz.lc" (listExtractor intExtractor)
+ghci> runFile "resources/collatz.lc" (extractList intExtractor)
 ```
