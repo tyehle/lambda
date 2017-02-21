@@ -31,6 +31,9 @@ lazyInterp env (Lam arg body) = return $ Clos arg body env
 lazyInterp env (Ref x) = maybe (scopeExcept x) force (Map.lookup x env)
 lazyInterp env (App f x) = lazyInterp env f >>= (`app` Thunk x env)
 
+scopeExcept :: String -> EST s a
+scopeExcept = ExceptT . return . scopeError
+
 force :: STRef s (Box s) -> EST s (Result s)
 force ref = lift (readSTRef ref) >>= handleBox
   where
@@ -49,24 +52,6 @@ app (Clos arg body env) box = do
   lazyInterp extendedEnv body
 app _ _ = throwE "Cannot apply non-function type"
 
-unwrap :: Result s -> EST s Node
-unwrap (Clos arg body env) = bindAll toBind $ Lam arg body
-  where
-    toBind = Set.toList $ arg `Set.delete` freeVars body
-    bindAll [] expr = return expr
-    bindAll (x:xs) expr = do
-      binding <- maybe (scopeExcept x) force $ Map.lookup x env
-      rawBinding <- unwrap binding
-      bindAll xs $ Lam x expr `App` rawBinding
-unwrap _ = throwE "Cannot unwrap non-closure type"
-
-scopeExcept :: String -> EST s a
-scopeExcept = ExceptT . return . scopeError
-
-
-interp :: Node -> Either String Node
-interp input = runST $ runExceptT (lazyInterp Map.empty input >>= unwrap)
-
 
 extract :: (forall s. Result s -> EST s a) -> Node -> Either String a
 extract ex input = runST $ runExceptT (lazyInterp Map.empty input >>= ex)
@@ -80,6 +65,9 @@ extractBool = extract boolExtractor
 
 extractList :: (forall s. Result s -> EST s a) -> Node -> Either String [a]
 extractList ex = extract $ listExtractor ex
+
+interp :: Node -> Either String Node
+interp = extract unwrap
 
 
 intExtractor :: Result s -> EST s Integer
@@ -107,9 +95,20 @@ listExtractor ex res = res `app` Forced (RFun onCons)
   where
     onCons hd = return $ RFun (\tl -> return (RPair (hd, tl)))
     onEmpty _ = return REmpty
+    pairToList REmpty = return []
     pairToList (RPair (hd,tl)) = do
       x <- ex hd
       xs <- listExtractor ex tl
       return (x:xs)
-    pairToList REmpty = return []
     pairToList _ = throwE "Non-list result"
+
+unwrap :: Result s -> EST s Node
+unwrap (Clos arg body env) = bindAll toBind $ Lam arg body
+  where
+    toBind = Set.toList $ arg `Set.delete` freeVars body
+    bindAll [] expr = return expr
+    bindAll (x:xs) expr = do
+      binding <- maybe (scopeExcept x) force $ Map.lookup x env
+      rawBinding <- unwrap binding
+      bindAll xs $ Lam x expr `App` rawBinding
+unwrap _ = throwE "Cannot unwrap non-closure type"
