@@ -1,30 +1,115 @@
+{-# LANGUAGE Rank2Types #-}
+
 module Interpreter where
 
-import Data.Map.Lazy (Map)
-import qualified Data.Map.Lazy as Map
-import Data.Maybe (fromMaybe)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import Data.STRef
+import Control.Monad.Trans
+import Control.Monad.Trans.Except
+import Control.Monad.ST
 
-import Scope
 import Node
+import Scope
+
+data Box s = Forced (Result s) | Thunk Node (Env s)
+
+data Result s = Clos String Node (Env s)
+              | RFun (Result s -> ExceptT String (ST s) (Result s))
+              | RNum Integer
+              | RBool Bool
+              | RPair (Result s, Result s)
+              | REmpty
+
+type Env s = Map String (STRef s (Box s))
+
+type EST s a = ExceptT String (ST s) a
+
+lazyInterp :: Env s -> Node -> EST s (Result s)
+lazyInterp env (Lam arg body) = return $ Clos arg body env
+lazyInterp env (Ref x) = maybe (scopeExcept x) force (Map.lookup x env)
+lazyInterp env (App f x) = lazyInterp env f >>= (`app` Thunk x env)
+
+force :: STRef s (Box s) -> EST s (Result s)
+force ref = lift (readSTRef ref) >>= handleBox
+  where
+    handleBox (Forced r) = return r
+    handleBox (Thunk node env) = do
+      result <- lazyInterp env node
+      lift $ writeSTRef ref (Forced result)
+      return result
+
+app :: Result s -> Box s -> EST s (Result s)
+app (RFun f) (Forced x) = f x
+app (RFun f) (Thunk node env) = lazyInterp env node >>= f
+app (Clos arg body env) box = do
+  argRef <- lift $ newSTRef box
+  let extendedEnv = Map.insert arg argRef env
+  lazyInterp extendedEnv body
+app _ _ = throwE "Cannot apply non-function type"
+
+unwrap :: Result s -> EST s Node
+unwrap (Clos arg body env) = bindAll toBind $ Lam arg body
+  where
+    toBind = Set.toList $ arg `Set.delete` freeVars body
+    bindAll [] expr = return expr
+    bindAll (x:xs) expr = do
+      binding <- maybe (scopeExcept x) force $ Map.lookup x env
+      rawBinding <- unwrap binding
+      bindAll xs $ Lam x expr `App` rawBinding
+unwrap _ = throwE "Cannot unwrap non-closure type"
+
+scopeExcept :: String -> EST s a
+scopeExcept = ExceptT . return . scopeError
+
 
 interp :: Node -> Either String Node
-interp = Right . undoClosures . envInterp Map.empty
+interp input = runST $ runExceptT (lazyInterp Map.empty input >>= unwrap)
 
-type Env = Map String INode
 
-data INode = IClos Env String Node | IRef String | IApp INode INode
+extract :: (forall s. Result s -> EST s a) -> Node -> Either String a
+extract ex input = runST $ runExceptT (lazyInterp Map.empty input >>= ex)
 
-envInterp :: Env -> Node -> INode
-envInterp env (Lam arg body) = IClos env arg body
-envInterp env (Ref x) = fromMaybe (IRef x) (Map.lookup x env)
-envInterp env (App f x) = case envInterp env f of
-  (IClos env' arg body) -> envInterp (Map.insert arg (envInterp env x) env') body
-  complex -> IApp complex (envInterp env x)
 
-undoClosures :: INode -> Node
-undoClosures (IRef x) = Ref x
-undoClosures (IApp f x) = App (undoClosures f) (undoClosures x)
-undoClosures (IClos env arg body) = Lam arg $ Map.foldlWithKey' letBind body (Map.delete arg env)
+extractInt :: Node -> Either String Integer
+extractInt = extract intExtractor
+
+extractBool :: Node -> Either String Bool
+extractBool = extract boolExtractor
+
+extractList :: (forall s. Result s -> EST s a) -> Node -> Either String [a]
+extractList ex = extract $ listExtractor ex
+
+
+intExtractor :: Result s -> EST s Integer
+intExtractor res = res `app` Forced (RFun plus1)
+               >>= (`app` Forced (RNum 0))
+               >>= getNum
   where
-    letBind expr name inode | isFree name expr = Lam name expr `App` undoClosures inode
-                            | otherwise = expr
+    plus1 (RNum n) = return $ RNum (n+1)
+    plus1 _ = throwE "Cannot increment non-number type"
+    getNum (RNum n) = return n
+    getNum _ = throwE "Non-number result"
+
+boolExtractor :: Result s -> EST s Bool
+boolExtractor res = res `app` Forced (RBool True)
+                >>= (`app` Forced (RBool False))
+                >>= getBool
+  where
+    getBool (RBool b) = return b
+    getBool _ = throwE "Non-boolean result"
+
+listExtractor :: (Result s -> EST s a) -> Result s -> EST s [a]
+listExtractor ex res = res `app` Forced (RFun onCons)
+                   >>= (`app` Forced (RFun onEmpty))
+                   >>= pairToList
+  where
+    onCons hd = return $ RFun (\tl -> return (RPair (hd, tl)))
+    onEmpty _ = return REmpty
+    pairToList (RPair (hd,tl)) = do
+      x <- ex hd
+      xs <- listExtractor ex tl
+      return (x:xs)
+    pairToList REmpty = return []
+    pairToList _ = throwE "Non-list result"

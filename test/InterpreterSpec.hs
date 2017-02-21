@@ -4,7 +4,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 import Parser (parseNode)
-import LazyInterpreter
+import Interpreter
 
 test :: Integer -> String -> String -> TestTree
 test n input expected = testCase (show n) assertion

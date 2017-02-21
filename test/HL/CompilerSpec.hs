@@ -5,8 +5,7 @@ import HL.AST
 import HL.Base (readBase)
 import HL.Parser (parseProgram)
 import Node
-import LazyInterpreter
--- import Extraction (Extractor, runExtractor, intExtractor, listExtractor, boolExtractor)
+import Interpreter
 
 import Test.Tasty
 import Test.Tasty.HUnit

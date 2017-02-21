@@ -1,8 +1,7 @@
 module Main where
 
 import Node (Node)
--- import Extraction (extractInt, Extractor, runExtractor)
-import LazyInterpreter (extractInt)
+import Interpreter (extractInt)
 import HL.Compiler (compile, checkScope, compileExp, desugarDefs)
 import HL.Parser (parseProgram)
 import HL.Base (readBase)
