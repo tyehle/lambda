@@ -11,11 +11,11 @@ import HL.Base (readBase)
 main :: IO ()
 main = runProgram program extractInt
   where
-    program = "(define (f x)            \
-              \  (if (zero? x)          \
-              \      1                  \
-              \      (* x (f (- x 1)))))\
-              \(f 5)                    "
+    program = "(define (fact x)            \
+              \  (if (zero? x)             \
+              \      1                     \
+              \      (* x (fact (- x 1)))))\
+              \(fact 5)                    "
 
 prettyProgram :: String -> IO ()
 prettyProgram input = runDisplayProgram (putStrLn . pretty) "input" input interp
