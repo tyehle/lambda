@@ -8,6 +8,8 @@ import HL.Parser (parseProgram)
 import HL.Base (readBase)
 
 
+type Interp a = Node -> Either String a
+
 main :: IO ()
 main = runProgram program extractInt
   where
@@ -18,9 +20,9 @@ main = runProgram program extractInt
               \(fact 5)                    "
 
 prettyProgram :: String -> IO ()
-prettyProgram input = runDisplayProgram (putStrLn . pretty) "input" input interp
+prettyProgram prog = runDisplayProgram (putStrLn . pretty) "input" prog interp
 
-runDisplayProgram :: (a -> IO ()) -> String -> String -> (Node -> Either String a) -> IO ()
+runDisplayProgram :: (a -> IO ()) -> String -> String -> Interp a -> IO ()
 runDisplayProgram display filename input extractor = do
   base <- readBase
   either putStrLn display $ do
@@ -29,10 +31,10 @@ runDisplayProgram display filename input extractor = do
     compiled <- compile defs prog
     extractor compiled
 
-runProgram :: Show a => String -> (Node -> Either String a) -> IO ()
+runProgram :: Show a => String -> Interp a -> IO ()
 runProgram = runDisplayProgram print "input"
 
-runFile :: Show a => String -> (Node -> Either String a) -> IO ()
+runFile :: Show a => String -> Interp a -> IO ()
 runFile filename extractor = do
   input <- readFile filename
   runDisplayProgram print filename input extractor
