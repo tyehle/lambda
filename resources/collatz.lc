@@ -8,4 +8,4 @@
       0
       (+ 1 (collatz (step n)))))
 
-(map collatz (range 0 15))
+(map collatz (range 1 15))
