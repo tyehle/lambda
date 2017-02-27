@@ -9,6 +9,8 @@ This is an extractor for lambda calculus literals to haskell literals.
 
 This is fun. You like it.
 
+You can read all about it [here](http://tobin.yehle.io/articles/lambda-compiler).
+
 
 Using the Code
 --------------
