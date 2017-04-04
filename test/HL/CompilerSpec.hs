@@ -3,7 +3,7 @@ module HL.CompilerSpec (compilerTests) where
 import HL.Compiler
 import HL.AST
 import HL.Base (readBase)
-import HL.Parser (parseProgram)
+import HL.SExp (parseProgram)
 import Node
 import Interpreter
 

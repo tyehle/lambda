@@ -1,7 +1,7 @@
 module HL.Base where
 
 import HL.AST (Definition)
-import HL.Parser (parseModule)
+import HL.SExp (parseModule)
 
 baseFile :: String
 baseFile = "resources/base.lc"

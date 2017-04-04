@@ -4,7 +4,7 @@ import Node (Node)
 import Pretty
 import Interpreter (interp, extractInt)
 import HL.Compiler (compile)
-import HL.Parser (parseProgram)
+import HL.SExp (parseProgram)
 import HL.Base (readBase)
 
 

@@ -22,13 +22,16 @@ library
                      , Pretty
                      , HL.Compiler
                      , HL.AST
-                     , HL.Parser
+                    --  , HL.Parser
                      , HL.Base
+                     , HL.TypeInference
+                     , HL.SExp
   build-depends:       base >= 4.7 && < 5
                      , parsec
                      , containers
                      , mtl
                      , transformers
+                     , either
   ghc-options:         -Wall
   default-language:    Haskell2010
 
