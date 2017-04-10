@@ -1,0 +1,35 @@
+(struct (∀ a (Maybe a))
+  [Some a]
+  [None])
+
+; (type head? (-> [a] (Maybe a)))
+; (define (head? l)
+;   (l (λ (h _) (Some h)) None))
+;
+; (type tail? (-> [a] (Maybe a)))
+; (define (tail? l)
+;   (l (λ (_ t) (Some t)) None))
+
+(type mapMaybe (-> (-> a b) (Maybe a) (Maybe b)))
+(define (map f m)
+  (case m
+    [(Some a) (Some (f a))]
+    [None     None]))
+
+(type pure (-> a (Maybe a)))
+(define pure Some)
+
+(type ap (-> (Maybe (-> a b)) (Maybe a) (Maybe b)))
+(define (ap fn a)
+  (case fn
+    [(Some f) (mapMaybe f a)]
+    [None     None]))
+
+(type bind (-> (Maybe a) (-> a (Maybe b))))
+(define (bind a f)
+  (case a
+    [(Some v) (f v)]
+    [None     None]))
+
+(type return (-> a (Maybe a)))
+(define return Some)
