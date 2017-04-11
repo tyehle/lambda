@@ -1,33 +1,40 @@
 module HL.TypeInference where
 
-import HL.AST
+import qualified HL.AST as AST
+import qualified HL.Typed as Typed
 
-data Type = TNum | TBool | TList Type | TFun [Type] Type deriving (Eq, Show)
+import Data.Maybe (catMaybes)
 
-infer :: Exp -> Maybe Type
-infer VTrue  = Just TBool
-infer VFalse = Just TBool
-infer (If _ t f) = let tt = infer t; ft = infer f in if tt == ft then tt else Nothing
-infer (And _ _) = Just TBool
-infer (Or _ _) = Just TBool
+-- data Type = TNum | TFun Type Type | Defined String  deriving (Eq, Show)
 
-infer (Num _) = Just TNum
-infer (IsZero n) = inferUnOp TNum TBool n
-infer (Minus a b) = inferBinOp TNum TNum a b
-infer (Plus a b) = inferBinOp TNum TNum a b
-infer (Mult a b) = inferBinOp TNum TNum a b
-infer (Divide a b) = inferBinOp TNum TNum a b
-infer (Eq a b) = inferBinOp TNum TBool a b
+-- data TypeAnnotation = IDK
 
-infer _ = Nothing
+-- infer :: Exp -> Maybe Type
+-- infer (Var x) = undefined x
+-- infer (Num _) = Just TNum
+-- infer (Lambda args body) = TFun <$> undefined args <*> infer body
+-- infer (Let bindings body) = undefined bindings >> infer body
+-- infer (Letrec name binding body) = undefined name binding >> infer body
+-- infer (Application f x) = undefined f x
 
+inferModule :: [Typed.Definition] -> Either String [AST.Definition]
+inferModule defs = catMaybes <$> mapM keepDefs defs
+  where
+    keepDefs (Typed.Def name expr) = Just . AST.Def name <$> inferExp expr
+    keepDefs (Typed.Struct _ variants) = Just . AST.Struct <$> undefined variants
+    keepDefs _ = Right Nothing
 
-inferBinOp :: Type -> Type -> Exp -> Exp -> Maybe Type
-inferBinOp expected result a b = if (infer a == Just expected) and (infer b == Just expected)
-                                 then Just result
-                                 else Nothing
+inferProgram :: Typed.Program -> Either String AST.Program
+inferProgram (Typed.Program defs expr) = AST.Program <$> inferModule defs <*> inferExp expr
 
-inferUnOp :: Type -> Type -> Exp -> Maybe Type
-inferUnOp expected result arg = if infer arg == Just expected
-                                then Just result
-                                else Nothing
+inferExp :: Typed.Exp -> Either String AST.Exp
+inferExp (Typed.Var x) = Right $ AST.Var x
+inferExp (Typed.Num n) = Right $ AST.Num n
+inferExp (Typed.EAnn e _) = inferExp e
+inferExp (Typed.Lambda args body) = AST.Lambda args <$> inferExp body
+inferExp (Typed.Let bindings body) = AST.Let <$> mapM inferBinding bindings <*> inferExp body
+  where
+    inferBinding (name, value) = (\v -> (name, v)) <$> inferExp value
+inferExp (Typed.Letrec name value body) = AST.Letrec name <$> inferExp value <*> inferExp body
+inferExp (Typed.Case e clauses) = undefined e clauses
+inferExp (Typed.Application f x) = AST.Application <$> inferExp f <*> inferExp x

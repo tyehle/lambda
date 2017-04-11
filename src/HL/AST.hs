@@ -7,7 +7,9 @@ import qualified Data.Set as Set
 
 data Program = Program [Definition] Exp deriving (Show)
 
-data Definition = Def String Exp deriving (Show)
+data Definition = Def String Exp
+                | Struct [(String, [String])]
+                deriving (Show)
 
 data Exp = Var String
 
@@ -16,6 +18,8 @@ data Exp = Var String
          | Lambda [String] Exp
          | Let [(String, Exp)] Exp
          | Letrec String Exp Exp
+
+         | Case Exp [(String, [String], Exp)]
 
          | Application Exp Exp
          deriving (Show)
