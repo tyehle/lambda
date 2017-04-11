@@ -17,9 +17,9 @@ data Definition = Def String Exp
                 | Struct QType [Type]
                 -- | TDef QType Type
                 -- | TSyn QType Type
-                deriving (Show)
+                deriving (Eq, Show)
 
-data QType = Forall [String] Type deriving (Show)
+data QType = Forall [String] Type deriving (Eq, Show)
 
 type Type = SExp
 
@@ -36,7 +36,7 @@ data Exp = Var String
          | Case Exp [(String, [String], Exp)]
 
          | Application Exp Exp
-         deriving (Show)
+         deriving (Eq, Show)
 
 
 -- External Interface --
@@ -115,7 +115,7 @@ toDef (Node [Leaf "define", Node (Leaf name:args), value]) = Def name <$> lam
   where
     argsNames = mapM toArg args
     lam = Lambda <$> argsNames <*> toExpr value
-toDef (Node [Leaf "define", name, value]) = Def <$> toIdent name <*> toExpr value
+toDef (Node [Leaf "define", n, v]) = Def <$> toIdent n <*> toExpr v
 toDef a@(Node (Leaf "type" : _)) = toAnn a
 toDef s@(Node (Leaf "struct" : _)) = toStruct s
 -- toDef td@(Node (Leaf "type-def" : _)) = toTDef td
@@ -129,7 +129,8 @@ toAnn bad = Left $ message "type annotation" bad
 
 
 toStruct :: SExp -> Either String Definition
-toStruct (Node (Leaf "struct" : name : variants)) = Struct <$> toQType name <*> mapM toType variants
+toStruct (Node (Leaf "struct" : name : variants)) =
+  Struct <$> toQType name <*> mapM toType variants
 toStruct bad = Left $ message "struct" bad
 
 
@@ -144,12 +145,13 @@ toStruct bad = Left $ message "struct" bad
 
 
 toQType :: SExp -> Either String QType
-toQType t@(Node [Leaf kw, tvars, typ]) | isForall = Forall <$> toTVars tvars <*> toType typ
-                                       | otherwise = Forall [] <$> toType t
+toQType t@(Node [Leaf kw, tvars, typ])
+  | isForall = Forall <$> toTVars tvars <*> toType typ
+  | otherwise = Forall [] <$> toType t
   where
     isForall = kw == "∀" || kw == "V" || kw == "forall"
-    toTVars l@(Leaf _) = pure <$> toIdent l
     toTVars (Node vars) = mapM toIdent vars
+    toTVars l@(Leaf _) = pure <$> toIdent l
 toQType t = Forall [] <$> toType t
 
 toType :: SExp -> Either String Type
@@ -158,7 +160,12 @@ toType (Node ts) = Node <$> mapM toType ts
 
 
 toExpr :: SExp -> Either String Exp
-toExpr expr@(Leaf _) = either (const (Var <$> toIdent expr)) Right $ toNat expr
+toExpr expr@(Leaf _) = tryBoth >>= ensurePositive
+  where
+    tryBoth = either (const (Var <$> toIdent expr)) Right $ toNum expr
+    ensurePositive e@(Num n) | n < 0 = Left $ message "number" expr
+                             | otherwise = Right e
+    ensurePositive e = Right e
 toExpr t@(Node (Leaf "type" : _)) = toEAnn t
 toExpr lam@(Node (Leaf "lambda" : _)) = toLambda lam
 toExpr lam@(Node (Leaf "λ" : _)) = toLambda lam
@@ -195,26 +202,30 @@ toLet bad = Left $ message "let" bad
 
 
 toLetrec :: SExp -> Either String Exp
-toLetrec (Node [Leaf "letrec", Node [Leaf name, expr], body]) = Letrec name <$> toExpr expr <*> toExpr body
+toLetrec (Node [ Leaf "letrec", Node [Leaf name, expr], body]) =
+  Letrec name <$> toExpr expr <*> toExpr body
 toLetrec bad = Left $ message "letrec" bad
 
 
 toCase :: SExp -> Either String Exp
-toCase (Node (Leaf "case" : e : cs)) = Case <$> toExpr e <*> mapM clause cs
+toCase (Node (Leaf "case":e:cs@(_:_))) = Case <$> toExpr e <*> mapM clause cs
   where
-    clause (Node [pat, expr]) = do -- (,) <$> toPattern pat <*> toExpr expr
+    clause (Node [pat, expr]) = do
       (name, args) <- toPattern pat
-      e <- toExpr expr
-      return (name, args, e)
+      body <- toExpr expr
+      return (name, args, body)
     clause bad = Left $ message "case clause" bad
     toPattern l@(Leaf _) = do { name <- toIdent l; return (name, []) }
     toPattern (Node (name : args)) = (,) <$> toIdent name <*> mapM toArg args
+    toPattern bad = Left $ message "pattern" bad
 toCase bad = Left $ message "case" bad
 
 
-toNat :: SExp -> Either String Exp
-toNat l@(Leaf n) = maybe (Left (message "number" l)) (Right . Num) $ readMaybe n
-toNat bad = Left $ message "number" bad
+toNum :: SExp -> Either String Exp
+toNum l@(Leaf num) = maybe die (Right . Num) $ readMaybe num
+  where
+    die = Left $ message "number" l
+toNum bad = Left $ message "number" bad
 
 
 toArg :: SExp -> Either String String
