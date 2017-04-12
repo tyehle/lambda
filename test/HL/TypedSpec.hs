@@ -17,21 +17,28 @@ typedTests = testGroup "Typed Tests"
   , lambdaTests
   , eannTests
   , exprTests
+  , typeTests
+  , qtypeTests
+  , structTests
+  , annTests
+  , defTests
+  , fileTests
   ]
 
 testFromString :: (Eq a, Show a) => Int -> (SExp -> a) -> String -> a -> TestTree
 testFromString n f input expected = testCase (show n) assertion
   where
-    test = parse sExp "test input" input
-    assertion = either (assertFailure . show) ((@?= expected) . f) test
+    parsed = parse sExp "test input" input
+    assertion = either (assertFailure . show) ((@?= expected) . f) parsed
 
 identTests :: TestTree
 identTests = testGroup "Ident Tests"
   [ testFromString 1 toIdent "foo" $ Right "foo"
   , testFromString 2 toIdent "->" $ Right "->"
   , testFromString 3 toIdent "Two2" $ Right "Two2"
-  , testFromString 4 toIdent "_" $ Left "Invalid identifier _"
-  , testFromString 5 toArg "_" $ Right "_"
+  , testFromString 4 toIdent "case" $ Left "Invalid identifier case"
+  , testFromString 5 toIdent "_" $ Left "Invalid identifier _"
+  , testFromString 6 toArg "_" $ Right "_"
   ]
 
 numTests :: TestTree
@@ -85,4 +92,73 @@ exprTests = testGroup "Exp Tests"
   , testFromString 4 toExpr "(f x)" $ Right (Application (Var "f") (Var "x"))
   , testFromString 5 toExpr "(f)" $ Right (Var "f")
   , testFromString 6 toExpr "()" $ Left "Illegal empty expression"
+  ]
+
+typeTests :: TestTree
+typeTests = testGroup "Type Tests"
+  [ testFromString 1 toType "->" $ Right (Leaf "->")
+  , testFromString 2 toType "12" $ Left "Invalid identifier 12"
+  , testFromString 3 toType "()" $ Right (Node [])
+  , testFromString 4 toType "(List a)" $ Right (Node [Leaf "List", Leaf "a"])
+  ]
+
+qtypeTests :: TestTree
+qtypeTests = testGroup "Qualified Type Tests"
+  [ testFromString 1 toQType "Bool" $ Right (Forall [] (Leaf "Bool"))
+  , testFromString 2 toQType "12" $ Left "Invalid identifier 12"
+  , testFromString 3 toQType "(List a)" $ Right (Forall [] (Node [Leaf "List", Leaf "a"]))
+  , testFromString 4 toQType "(forall a a)" $ Right (Forall ["a"] (Leaf "a"))
+  , testFromString 5 toQType "(V (a) Bool)" $ Right (Forall ["a"] (Leaf "Bool"))
+  , testFromString 6 toQType "(∀ (a b) (-> a b))" $
+      Right (Forall ["a", "b"] (Node [Leaf "->", Leaf "a", Leaf "b"]))
+  , testFromString 7 toQType "(∀ V V)" $ Left "Invalid identifier V"
+  ]
+
+structTests :: TestTree
+structTests = testGroup "Struct Tests"
+  [ testFromString 1 toStruct "(struct Bool [True] [False])" $
+      Right (Struct (Forall [] (Leaf "Bool")) [Leaf "True", Leaf "False"])
+  , testFromString 2 toStruct "(struct (∀ a (List a)) [Cons a (List a)] [Nil]))" $
+      Right (Struct
+              (Forall ["a"] (Node [Leaf "List", Leaf "a"]))
+              [ Node [Leaf "Cons", Leaf "a", Node [Leaf "List", Leaf "a"]]
+              , Leaf "Nil"])
+  , testFromString 3 toStruct "(struct A)" $ Left "Invalid struct (struct A)"
+  , testFromString 4 toStruct "(struct A [])" $ Left "Invalid variant ()"
+  , testFromString 5 toStruct "(struct A [(Foo a) b])" $
+      Left "Invalid variant ((Foo a) b)"
+  , testFromString 6 toStruct "(struct A True False)" $
+      Left "Invalid variant True"
+  ]
+
+annTests :: TestTree
+annTests = testGroup "Annotation Tests"
+  [ testFromString 1 toAnn "(type foo A)" $ Right (TAnn "foo" (Forall [] (Leaf "A")))
+  , testFromString 2 toAnn "(type id (∀ a (-> a a)))" $
+      Right (TAnn "id" (Forall ["a"] (Node [Leaf "->", Leaf "a", Leaf "a"])))
+  , testFromString 3 toAnn "(type foo)" $ Left "Invalid type annotation (type foo)"
+  ]
+
+defTests :: TestTree
+defTests = testGroup "Def Tests"
+  [ testFromString 1 toDef "(define (f x) x)" $ Right (Def "f" (Lambda ["x"] (Var "x")))
+  , testFromString 2 toDef "(define (f) 1)" $ Left "Invalid identifier (f)"
+  , testFromString 3 toDef "(define f 1)" $ Right (Def "f" (Num 1))
+  , testFromString 4 toDef "(define f)" $ Left "Invalid definition (define f)"
+  ]
+
+testFileFromString :: (Eq a, Show a) => Int -> ([SExp] -> a) -> String -> a -> TestTree
+testFileFromString n f input expected = testCase (show n) assertion
+  where
+    parsed = parse fileParser "test input" input
+    assertion = either (assertFailure . show) ((@?= expected) . f) parsed
+
+fileTests :: TestTree
+fileTests = testGroup "File Tests"
+  [ testFileFromString 1 toModule "(define x 1)" $ Right [Def "x" (Num 1)]
+  , testFileFromString 2 toModule "(define x 1) x" $ Left "Invalid definition x"
+  , testFileFromString 3 toProgram "x" $ Right (Program [] (Var "x"))
+  , testFileFromString 4 toProgram "(define x 1) x" $
+      Right (Program [Def "x" (Num 1)] (Var "x"))
+  , testFileFromString 5 toProgram "(define x 1)" $ Left "Invalid expression (define x 1)"
   ]

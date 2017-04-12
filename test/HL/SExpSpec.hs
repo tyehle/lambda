@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 import Text.Parsec (Parsec, parse, getInput)
 
 sExpTests :: TestTree
-sExpTests = testGroup "S-Expression tests"
+sExpTests = testGroup "S-Expression Tests"
   [ prettyTests
   , sExpParserTests
   , blockCommentTests

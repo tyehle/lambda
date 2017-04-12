@@ -3,6 +3,7 @@ module HL.Typed where
 import HL.SExp
 import Pretty
 
+import Data.Set (Set)
 import qualified Data.Set as Set
 import Text.Parsec (parse)
 import Control.Monad (foldM)
@@ -10,7 +11,7 @@ import Data.Either.Combinators (mapLeft)
 import Data.Char (isLetter, isAlphaNum)
 import Text.Read (readMaybe)
 
-data Program = Program [Definition] Exp deriving (Show)
+data Program = Program [Definition] Exp deriving (Eq, Show)
 
 data Definition = Def String Exp
                 | TAnn String QType
@@ -51,6 +52,7 @@ parseProgram name input = fromFile name input >>= toProgram
 
 parseModule :: String -> String -> Either String [Definition]
 parseModule name input = fromFile name input >>= toModule
+
 
 -- Transformer --
 
@@ -98,12 +100,20 @@ parseModule name input = fromFile name input >>= toModule
 --
 -- <lam>    ::= λ | lambda
 
+
+keywords :: Set String
+keywords = Set.fromList [ "define", "type", "struct"
+                        , "∀", "V", "forall"
+                        , "let", "letrec", "case"
+                        , "λ", "lambda"]
+
+
 toProgram :: [SExp] -> Either String Program
 toProgram [] = Left "No expression"
 toProgram xs = Program <$> defs <*> expr
   where
     defs = mapM toDef . init $ xs
-    expr = toExpr . last $ xs
+    expr = mapLeft (const (message "expression" (last xs))) . toExpr . last $ xs
 
 
 toModule :: [SExp] -> Either String [Definition]
@@ -111,7 +121,7 @@ toModule = mapM toDef
 
 
 toDef :: SExp -> Either String Definition
-toDef (Node [Leaf "define", Node (Leaf name:args), value]) = Def name <$> lam
+toDef (Node [Leaf "define", Node (Leaf name:args@(_:_)), value]) = Def name <$> lam
   where
     argsNames = mapM toArg args
     lam = Lambda <$> argsNames <*> toExpr value
@@ -129,8 +139,12 @@ toAnn bad = Left $ message "type annotation" bad
 
 
 toStruct :: SExp -> Either String Definition
-toStruct (Node (Leaf "struct" : name : variants)) =
-  Struct <$> toQType name <*> mapM toType variants
+toStruct (Node (Leaf "struct" : name : variants@(_:_))) =
+  Struct <$> toQType name <*> mapM toVariant variants
+  where
+    toVariant (Node [object@(Leaf _)]) = Right object
+    toVariant constructor@(Node (Leaf _ : _)) = Right constructor
+    toVariant bad = Left $ message "variant" bad
 toStruct bad = Left $ message "struct" bad
 
 
@@ -238,7 +252,7 @@ toIdent sexp@(Leaf name@(first:rest)) = if valid
                                         then Right name
                                         else Left $ message "identifier" sexp
   where
-    valid = checkFirst first && all checkRest rest
+    valid = checkFirst first && all checkRest rest && not (Set.member name keywords)
     checkFirst c = isLetter c || Set.member c symbols
     checkRest c = isAlphaNum c || Set.member c symbols || c == '_'
     symbols = Set.fromList "!@#$%^&*+-=<>?/~"
