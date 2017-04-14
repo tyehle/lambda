@@ -81,8 +81,8 @@ intExtractor res = res `app` Forced (RFun plus1)
     getNum _ = throwE "Non-number result"
 
 boolExtractor :: Result s -> EST s Bool
-boolExtractor res = res `app` Forced (RBool True)
-                >>= (`app` Forced (RBool False))
+boolExtractor res = res `app` Forced (RBool False)
+                >>= (`app` Forced (RBool True))
                 >>= getBool
   where
     getBool (RBool b) = return b

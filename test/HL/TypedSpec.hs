@@ -38,7 +38,8 @@ identTests = testGroup "Ident Tests"
   , testFromString 3 toIdent "Two2" $ Right "Two2"
   , testFromString 4 toIdent "case" $ Left "Invalid identifier case"
   , testFromString 5 toIdent "_" $ Left "Invalid identifier _"
-  , testFromString 6 toArg "_" $ Right "_"
+  , testFromString 6 toIdent "_foo" $ Left "Invalid identifier _foo"
+  , testFromString 7 toArg "_" $ Right "_"
   ]
 
 numTests :: TestTree

@@ -26,6 +26,7 @@ library
                      , HL.Base
                      , HL.TypeInference
                      , HL.SExp
+                     , HL.Fresh
   build-depends:       base >= 4.7 && < 5
                      , parsec
                      , containers

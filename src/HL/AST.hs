@@ -30,6 +30,7 @@ instance Scope Program where
 
 progFreeVars :: [String] -> [Definition] -> Exp -> Set String
 progFreeVars env [] expr = freeVars expr `removeAll` env
+progFreeVars env (Struct variants : defs) expr = progFreeVars (map fst variants ++ env) defs expr
 progFreeVars env (Def name body : defs) expr = theseVars `Set.union` recurVars
   where
     newEnv = name : env
@@ -38,6 +39,7 @@ progFreeVars env (Def name body : defs) expr = theseVars `Set.union` recurVars
 
 instance Scope Exp where
   freeVars (Var name) = Set.singleton name
+  freeVars (Num _) = Set.empty
   freeVars (Lambda args body) = freeVars body `removeAll` args
   freeVars (Let bindings body) = foldr addBindingVars bodyVars bindings
     where
@@ -46,7 +48,9 @@ instance Scope Exp where
   freeVars (Letrec name binding body) = Set.delete name allVars
     where
       allVars = freeVars binding `Set.union` freeVars body
-  freeVars (Num _) = Set.empty
+  freeVars (Case e clauses) = Set.unions $ freeVars e : map clauseVars clauses
+    where
+      clauseVars (_, args, body) = freeVars body `removeAll` args
   freeVars (Application f x) = freeVars f `Set.union` freeVars x
 
 removeAll :: Ord a => Set a -> [a] -> Set a

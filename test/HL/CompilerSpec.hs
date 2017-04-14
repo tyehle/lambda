@@ -12,14 +12,14 @@ import Test.Tasty
 import Test.Tasty.HUnit
 
 compilerTests :: TestTree
-compilerTests = testGroup "Compiler Tests" []
-  -- [ variableTests
-  -- , boolTests
-  -- , numTests
-  -- , lambdaTests
-  -- , listTests
-  -- , appTests
-  -- ]
+compilerTests = testGroup "Compiler Tests"
+  [ variableTests
+  , boolTests
+  , numTests
+  , lambdaTests
+  , listTests
+  , appTests
+  ]
 
 testWithDefs :: (Eq a, Show a) => (Exp -> Either String a) -> Integer -> String -> a -> TestTree
 testWithDefs reduce n input expected = testCase (show n) assertion
@@ -40,10 +40,10 @@ testExtract n ex = testWithDefs (ex . compileExp) n
 
 
 true :: Node
-true = Lam "t" $ Lam "f" $ Ref "t"
+true = Lam "_#f_0" $ Lam "_#t_0" $ Ref "_#t_0"
 
 false :: Node
-false = Lam "t" $ Lam "f" $ Ref "f"
+false = Lam "_#f_0" $ Lam "_#t_0" $ Ref "_#f_0"
 
 
 variableTests :: TestTree
@@ -53,8 +53,8 @@ variableTests = testGroup "Variable Tests"
 
 boolTests :: TestTree
 boolTests = testGroup "Bool Tests"
-  [ testRun 1 "#t" $ Lam "t" $ Lam "f" $ Ref "t"
-  , testRun 2 "#f" $ Lam "t" $ Lam "f" $ Ref "f"
+  [ testRun 1 "#t" true
+  , testRun 2 "#f" false
 
   , testGroup "If Tests"
       [ testRun 1 "(if #t (λ (i) i) x)" $ Lam "i" (Ref "i")
@@ -142,15 +142,15 @@ lambdaTests = testGroup "Lambda Tests"
 
 listTests :: TestTree
 listTests = testGroup "List Tests"
-  [ testExtract 1 (extractList intExtractor) "(cons 0 empty)" [0]
-  , testExtract 2 (extractList intExtractor) "(cons 0 (cons 1 empty))" [0, 1]
-  , testExtract 3 (extractList intExtractor) "empty" []
-  , testExtract 4 extractInt "(head (cons 0 empty))" 0
-  , testExtract 5 (extractList intExtractor) "(tail (cons 0 empty))" []
-  , testExtract 6 extractBool "(pair? empty)" False
-  , testExtract 7 extractBool "(pair? (cons #f empty))" True
-  , testExtract 8 extractBool "(null? empty)" True
-  , testExtract 9 extractBool "(null? (cons #f empty))" False
+  [ testExtract 1 (extractList intExtractor) "(Cons 0 Empty)" [0]
+  , testExtract 2 (extractList intExtractor) "(Cons 0 (Cons 1 Empty))" [0, 1]
+  , testExtract 3 (extractList intExtractor) "Empty" []
+  , testExtract 4 extractInt "(head (Cons 0 Empty))" 0
+  , testExtract 5 (extractList intExtractor) "(tail (Cons 0 Empty))" []
+  , testExtract 6 extractBool "(pair? Empty)" False
+  , testExtract 7 extractBool "(pair? (Cons #f Empty))" True
+  , testExtract 8 extractBool "(null? Empty)" True
+  , testExtract 9 extractBool "(null? (Cons #f Empty))" False
   ]
 
 

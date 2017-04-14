@@ -1,6 +1,7 @@
 module HL.Compiler where
 
 import HL.AST
+import HL.Fresh
 import Node
 import Scope
 
@@ -29,9 +30,20 @@ defToLet (Def name expr) body = if isFree name body
                                      then Letrec name expr body
                                      else Let [(name, expr)] body
                                 else body
-defToLet (Struct variants) body = undefined
+defToLet (Struct variants) body = if any (flip isFree body . fst) variants
+                                  then Let (zip (map fst sorted) outerLams) body
+                                  else body
   where
     sorted = sortOn fst variants
+    (freshConstructors, freshArgs) = defaultEvalFresh $ do
+      cs <- mapM (freshFrom . fst) sorted
+      as <- mapM (mapM freshFrom . snd) sorted
+      return (cs, as)
+    mkApp c args = foldl Application (Var c) (map Var args)
+    apps = zipWith mkApp freshConstructors freshArgs
+    innerLams = map (Lambda freshConstructors) apps
+    outerLams = zipWith Lambda freshArgs innerLams
+
 
 compileExp :: Exp -> Node
 compileExp (Var name) = Ref name
