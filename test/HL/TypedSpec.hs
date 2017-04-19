@@ -11,7 +11,7 @@ typedTests :: TestTree
 typedTests = testGroup "Typed Tests"
   [ identTests
   , numTests
-  , caseTests
+  -- , caseTests
   , letrecTests
   , letTests
   , lambdaTests
@@ -19,7 +19,7 @@ typedTests = testGroup "Typed Tests"
   , exprTests
   , typeTests
   , qtypeTests
-  , structTests
+  -- , structTests
   , annTests
   , defTests
   , fileTests
@@ -36,7 +36,7 @@ identTests = testGroup "Ident Tests"
   [ testFromString 1 toIdent "foo" $ Right "foo"
   , testFromString 2 toIdent "->" $ Right "->"
   , testFromString 3 toIdent "Two2" $ Right "Two2"
-  , testFromString 4 toIdent "case" $ Left "Invalid identifier case"
+  , testFromString 4 toIdent "lambda" $ Left "Invalid identifier lambda"
   , testFromString 5 toIdent "_" $ Left "Invalid identifier _"
   , testFromString 6 toIdent "_foo" $ Left "Invalid identifier _foo"
   , testFromString 7 toArg "_" $ Right "_"
@@ -51,13 +51,13 @@ numTests = testGroup "Num Tests"
   -- , testFromString 5 toNum "-12" $ Left "Invalid number -12"
   ]
 
-caseTests :: TestTree
-caseTests = testGroup "Case Tests"
-  [ testFromString 1 toCase "(case x [(Just _) 1] [Nothing 0])" $
-      Right (Case (Var "x") [("Just", ["_"], Num 1), ("Nothing", [], Num 0)])
-  , testFromString 2 toCase "(case x)" $ Left "Invalid case (case x)"
-  , testFromString 3 toCase "(case x [() 1])" $ Left "Invalid pattern ()"
-  ]
+-- caseTests :: TestTree
+-- caseTests = testGroup "Case Tests"
+--   [ testFromString 1 toCase "(case x [(Just _) 1] [Nothing 0])" $
+--       Right (Case (Var "x") [("Just", ["_"], Num 1), ("Nothing", [], Num 0)])
+--   , testFromString 2 toCase "(case x)" $ Left "Invalid case (case x)"
+--   , testFromString 3 toCase "(case x [() 1])" $ Left "Invalid pattern ()"
+--   ]
 
 letrecTests :: TestTree
 letrecTests = testGroup "Letrec Tests"
@@ -115,22 +115,22 @@ qtypeTests = testGroup "Qualified Type Tests"
   , testFromString 7 toQType "(∀ V V)" $ Left "Invalid identifier V"
   ]
 
-structTests :: TestTree
-structTests = testGroup "Struct Tests"
-  [ testFromString 1 toStruct "(struct Bool [True] [False])" $
-      Right (Struct (Forall [] (Leaf "Bool")) [Leaf "True", Leaf "False"])
-  , testFromString 2 toStruct "(struct (∀ a (List a)) [Cons a (List a)] [Nil]))" $
-      Right (Struct
-              (Forall ["a"] (Node [Leaf "List", Leaf "a"]))
-              [ Node [Leaf "Cons", Leaf "a", Node [Leaf "List", Leaf "a"]]
-              , Leaf "Nil"])
-  , testFromString 3 toStruct "(struct A)" $ Left "Invalid struct (struct A)"
-  , testFromString 4 toStruct "(struct A [])" $ Left "Invalid variant ()"
-  , testFromString 5 toStruct "(struct A [(Foo a) b])" $
-      Left "Invalid variant ((Foo a) b)"
-  , testFromString 6 toStruct "(struct A True False)" $
-      Left "Invalid variant True"
-  ]
+-- structTests :: TestTree
+-- structTests = testGroup "Struct Tests"
+--   [ testFromString 1 toStruct "(struct Bool [True] [False])" $
+--       Right (Struct (Forall [] (Leaf "Bool")) [Leaf "True", Leaf "False"])
+--   , testFromString 2 toStruct "(struct (∀ a (List a)) [Cons a (List a)] [Nil]))" $
+--       Right (Struct
+--               (Forall ["a"] (Node [Leaf "List", Leaf "a"]))
+--               [ Node [Leaf "Cons", Leaf "a", Node [Leaf "List", Leaf "a"]]
+--               , Leaf "Nil"])
+--   , testFromString 3 toStruct "(struct A)" $ Left "Invalid struct (struct A)"
+--   , testFromString 4 toStruct "(struct A [])" $ Left "Invalid variant ()"
+--   , testFromString 5 toStruct "(struct A [(Foo a) b])" $
+--       Left "Invalid variant ((Foo a) b)"
+--   , testFromString 6 toStruct "(struct A True False)" $
+--       Left "Invalid variant True"
+--   ]
 
 annTests :: TestTree
 annTests = testGroup "Annotation Tests"

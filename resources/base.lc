@@ -14,15 +14,19 @@
 
 ;; Booleans
 
-(struct Bool
-  [#t]
-  [#f])
+;(struct Bool
+;  [#t]
+;  [#f])
+
+(type #f Bool)
+(define (#f f t) f)
+
+(type #t Bool)
+(define (#t f t) t)
 
 (type if (-> Bool a a a))
 (define (if c t f)
-  (case c
-    [#t t]
-    [#f f]))
+  (c f t))
 
 (type and (-> Bool Bool Bool))
 (define (and a b)
@@ -104,27 +108,28 @@
 ;; Lists
 
 ; Special syntax [a] is internally changed to (List a)
-(struct (∀ a [a])
-  [Cons a [a]]
-  [Empty])
+;(struct (∀ a [a])
+;  [Cons a [a]]
+;  [Empty])
+
+(type Cons (∀ a [a]))
+(define (Cons h t) (λ (c e) (c h t)))
+
+(type Empty (∀ a [a]))
+(define Empty (λ (c e) e))
+
 
 (type head (-> [a] a))
 (define (head l)
-  (case l
-    [(Cons h t) h]
-    [Empty hang]))
+  (l (λ (h t) h) hang))
 
 (type tail (-> [a] [a]))
 (define (tail l)
-  (case l
-    [(Cons h t) t]
-    [Empty hang]))
+  (l (λ (h t) t) hang))
 
 (type null? (-> [a] Bool))
 (define (null? l)
-  (case l
-    [(Cons _ _) #f]
-    [Empty #t]))
+  (l (λ (_ _) #f) #t))
 
 (type pair? (-> [a] Bool))
 (define (pair? l)
@@ -132,29 +137,25 @@
 
 (type foldl (-> (-> b a b) b [a] b))
 (define (foldl fn acc xs)
-  (case xs
-    [(Cons h t) (foldl fn (fn acc h) t)]
-    [Empty acc]))
+  (xs (λ (h t) (foldl fn (fn acc h) t))
+      acc))
 
 (type foldr (-> (-> a b b) b [a] b))
 (define (foldr fn acc xs)
-  (case xs
-    [(Cons h t) (fn h (foldr fn acc t))]
-    [Empty acc]))
+  (xs (λ (h t) (fn h (foldr fn acc t)))
+      acc))
 
 (type map (-> (-> a b) [a] [b]))
 (define (map f xs)
-  (case xs
-    [(Cons h t) (Cons (f h) (map f t))]
-    [Empty Empty]))
+  (xs (λ (h t) (Cons (f h) (map f t)))
+      Empty))
 
 (type take (-> Num [a] [a]))
 (define (take n l)
-  (case l
-    [Empty Empty]
-    [(Cons h t) (if (zero? n)
-                    Empty
-                    (Cons h (take (prev n) t)))]))
+  (l (λ (h t) (if (zero? n)
+                  Empty
+                  (Cons h (take (prev n) t))))
+     Empty))
 
 (type from (-> Num [Num]))
 (define (from n)

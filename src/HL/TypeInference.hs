@@ -1,6 +1,6 @@
 module HL.TypeInference where
 
-import HL.SExp
+-- import HL.SExp
 import qualified HL.AST as AST
 import qualified HL.Typed as Typed
 
@@ -33,7 +33,7 @@ checkExp (Typed.EAnn e t) = checkExp e >>= undefined t
 checkExp (Typed.Lambda args body) = undefined args >> checkExp body
 checkExp (Typed.Let bindings body) = undefined bindings >> checkExp body
 checkExp (Typed.Letrec name value body) = undefined name value >> checkExp body
-checkExp (Typed.Case expr clauses) = checkExp expr >>= undefined clauses
+-- checkExp (Typed.Case expr clauses) = checkExp expr >>= undefined clauses
 checkExp (Typed.Application f x) = do
   fType <- checkExp f
   xType <- checkExp x
@@ -53,14 +53,14 @@ inferModule :: [Typed.Definition] -> Either String [AST.Definition]
 inferModule defs = catMaybes <$> mapM keepDefs defs
   where
     keepDefs (Typed.Def name expr) = Just . AST.Def name <$> inferExp expr
-    keepDefs (Typed.Struct _ variants) = Just . AST.Struct <$> mapM v2s variants
+    -- keepDefs (Typed.Struct _ variants) = Just . AST.Struct <$> mapM v2s variants
     keepDefs _ = Right Nothing
-    v2s (Leaf name) = Right (name, [])
-    v2s (Node (Leaf name : args)) = Right (name, map firstName args)
-    v2s bad = Left $ "Invalid variant " ++ show bad
-    firstName (Leaf name) = name
-    firstName (Node []) = "empty"
-    firstName (Node (child:_)) = firstName child
+    -- v2s (Leaf name) = Right (name, [])
+    -- v2s (Node (Leaf name : args)) = Right (name, map firstName args)
+    -- v2s bad = Left $ "Invalid variant " ++ show bad
+    -- firstName (Leaf name) = name
+    -- firstName (Node []) = "empty"
+    -- firstName (Node (child:_)) = firstName child
 
 inferProgram :: Typed.Program -> Either String AST.Program
 inferProgram (Typed.Program defs expr) = AST.Program <$> inferModule defs <*> inferExp expr
@@ -74,7 +74,7 @@ inferExp (Typed.Let bindings body) = AST.Let <$> mapM inferBinding bindings <*> 
   where
     inferBinding (name, value) = (\v -> (name, v)) <$> inferExp value
 inferExp (Typed.Letrec name value body) = AST.Letrec name <$> inferExp value <*> inferExp body
-inferExp (Typed.Case e clauses) = AST.Case <$> inferExp e <*> mapM inferClause clauses
-  where
-    inferClause (name, args, body) = inferExp body >>= \b -> return (name, args, b)
+-- inferExp (Typed.Case e clauses) = AST.Case <$> inferExp e <*> mapM inferClause clauses
+--   where
+--     inferClause (name, args, body) = inferExp body >>= \b -> return (name, args, b)
 inferExp (Typed.Application f x) = AST.Application <$> inferExp f <*> inferExp x

@@ -40,10 +40,10 @@ testExtract n ex = testWithDefs (ex . compileExp) n
 
 
 true :: Node
-true = Lam "_#f_0" $ Lam "_#t_0" $ Ref "_#t_0"
+true = Lam "f" $ Lam "t" $ Ref "t"
 
 false :: Node
-false = Lam "_#f_0" $ Lam "_#t_0" $ Ref "_#f_0"
+false = Lam "f" $ Lam "t" $ Ref "f"
 
 
 variableTests :: TestTree

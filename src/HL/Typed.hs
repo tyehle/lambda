@@ -15,7 +15,7 @@ data Program = Program [Definition] Exp deriving (Eq, Show)
 
 data Definition = Def String Exp
                 | TAnn String QType
-                | Struct QType [Type]
+                -- | Struct QType [Type]
                 -- | TDef QType Type
                 -- | TSyn QType Type
                 deriving (Eq, Show)
@@ -34,7 +34,7 @@ data Exp = Var String
          | Let [(String, Exp)] Exp
          | Letrec String Exp Exp
 
-         | Case Exp [(String, [String], Exp)]
+        --  | Case Exp [(String, [String], Exp)]
 
          | Application Exp Exp
          deriving (Eq, Show)
@@ -102,9 +102,10 @@ parseModule name input = fromFile name input >>= toModule
 
 
 keywords :: Set String
-keywords = Set.fromList [ "define", "type", "struct"
+keywords = Set.fromList [ "define", "type"
                         , "∀", "V", "forall"
-                        , "let", "letrec", "case"
+                        -- , "struct", "case"
+                        , "let", "letrec"
                         , "λ", "lambda"]
 
 
@@ -127,7 +128,7 @@ toDef (Node [Leaf "define", Node (Leaf name:args@(_:_)), value]) = Def name <$> 
     lam = Lambda <$> argsNames <*> toExpr value
 toDef (Node [Leaf "define", n, v]) = Def <$> toIdent n <*> toExpr v
 toDef a@(Node (Leaf "type" : _)) = toAnn a
-toDef s@(Node (Leaf "struct" : _)) = toStruct s
+-- toDef s@(Node (Leaf "struct" : _)) = toStruct s
 -- toDef td@(Node (Leaf "type-def" : _)) = toTDef td
 -- toDef ts@(Node (Leaf "type-synonym" : _)) = toTSyn ts
 toDef bad = Left $ message "definition" bad
@@ -138,14 +139,14 @@ toAnn (Node [Leaf "type", Leaf name, typ]) = TAnn name <$> toQType typ
 toAnn bad = Left $ message "type annotation" bad
 
 
-toStruct :: SExp -> Either String Definition
-toStruct (Node (Leaf "struct" : name : variants@(_:_))) =
-  Struct <$> toQType name <*> mapM toVariant variants
-  where
-    toVariant (Node [object@(Leaf _)]) = Right object
-    toVariant constructor@(Node (Leaf _ : _)) = Right constructor
-    toVariant bad = Left $ message "variant" bad
-toStruct bad = Left $ message "struct" bad
+-- toStruct :: SExp -> Either String Definition
+-- toStruct (Node (Leaf "struct" : name : variants@(_:_))) =
+--   Struct <$> toQType name <*> mapM toVariant variants
+--   where
+--     toVariant (Node [object@(Leaf _)]) = Right object
+--     toVariant constructor@(Node (Leaf _ : _)) = Right constructor
+--     toVariant bad = Left $ message "variant" bad
+-- toStruct bad = Left $ message "struct" bad
 
 
 -- toTDef :: SExp -> Either String Definition
@@ -185,7 +186,7 @@ toExpr lam@(Node (Leaf "lambda" : _)) = toLambda lam
 toExpr lam@(Node (Leaf "λ" : _)) = toLambda lam
 toExpr lt@(Node (Leaf "let" : _)) = toLet lt
 toExpr letrec@(Node (Leaf "letrec" : _)) = toLetrec letrec
-toExpr c@(Node (Leaf "case" : _)) = toCase c
+-- toExpr c@(Node (Leaf "case" : _)) = toCase c
 toExpr (Node (f:xs)) = toExpr f >>= (\f' -> foldM doApp f' xs)
   where
     doApp f' arg = Application f' <$> toExpr arg
@@ -221,18 +222,18 @@ toLetrec (Node [ Leaf "letrec", Node [Leaf name, expr], body]) =
 toLetrec bad = Left $ message "letrec" bad
 
 
-toCase :: SExp -> Either String Exp
-toCase (Node (Leaf "case":e:cs@(_:_))) = Case <$> toExpr e <*> mapM clause cs
-  where
-    clause (Node [pat, expr]) = do
-      (name, args) <- toPattern pat
-      body <- toExpr expr
-      return (name, args, body)
-    clause bad = Left $ message "case clause" bad
-    toPattern l@(Leaf _) = do { name <- toIdent l; return (name, []) }
-    toPattern (Node (name : args)) = (,) <$> toIdent name <*> mapM toArg args
-    toPattern bad = Left $ message "pattern" bad
-toCase bad = Left $ message "case" bad
+-- toCase :: SExp -> Either String Exp
+-- toCase (Node (Leaf "case":e:cs@(_:_))) = Case <$> toExpr e <*> mapM clause cs
+--   where
+--     clause (Node [pat, expr]) = do
+--       (name, args) <- toPattern pat
+--       body <- toExpr expr
+--       return (name, args, body)
+--     clause bad = Left $ message "case clause" bad
+--     toPattern l@(Leaf _) = do { name <- toIdent l; return (name, []) }
+--     toPattern (Node (name : args)) = (,) <$> toIdent name <*> mapM toArg args
+--     toPattern bad = Left $ message "pattern" bad
+-- toCase bad = Left $ message "case" bad
 
 
 toNum :: SExp -> Either String Exp
