@@ -4,7 +4,7 @@ import HL.Compiler
 import HL.AST
 import HL.Base (readBase)
 import HL.Typed (parseProgram)
-import HL.TypeInference (inferProgram)
+import HL.TypeConversion (convertProgram)
 import Node
 import Interpreter
 
@@ -26,7 +26,7 @@ testWithDefs reduce n input expected = testCase (show n) assertion
   where
     assertion = do
       defs <- readBase
-      let expr = desugarDefs <$> defs <*> (parseProgram "test input" input >>= inferProgram)
+      let expr = desugarDefs <$> defs <*> (parseProgram "test input" input >>= convertProgram)
       either assertFailure (@?= expected) (expr >>= reduce)
 
 test :: Integer -> String -> Node -> TestTree

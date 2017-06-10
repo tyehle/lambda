@@ -171,6 +171,7 @@ toQType t = Forall [] <$> toType t
 
 toType :: SExp -> Either String Type
 toType l@(Leaf _) = Leaf <$> toIdent l
+toType (Node [l@Leaf{}]) = (\inner -> Node [Leaf "List", Leaf inner]) <$> toIdent l
 toType (Node ts) = Node <$> mapM toType ts
 
 

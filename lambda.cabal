@@ -25,6 +25,7 @@ library
                      , HL.Typed
                      , HL.Base
                      , HL.TypeInference
+                     , HL.TypeConversion
                      , HL.SExp
                      , HL.Fresh
   build-depends:       base >= 4.7 && < 5
@@ -56,6 +57,7 @@ test-suite lambda-test
                      , HL.ParserSpec
                      , HL.CompilerSpec
                      , HL.TypedSpec
+                     , HL.TypeInferenceSpec
   build-depends:       base
                      , lambda
                      , tasty

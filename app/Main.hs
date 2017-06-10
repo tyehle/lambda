@@ -5,7 +5,7 @@ import Pretty
 import Interpreter (interp, extractInt)
 import HL.Compiler (compile)
 import HL.Typed (parseProgram)
-import HL.TypeInference (inferProgram)
+import HL.TypeConversion (convertProgram)
 import HL.Base (readBase)
 
 
@@ -28,7 +28,7 @@ runDisplayProgram display filename input extractor = do
   base <- readBase
   either putStrLn display $ do
     defs <- base
-    prog <- parseProgram filename input >>= inferProgram
+    prog <- parseProgram filename input >>= convertProgram
     compiled <- compile defs prog
     extractor compiled
 

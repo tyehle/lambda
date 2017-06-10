@@ -6,6 +6,7 @@ import HL.CompilerSpec
 import InterpreterSpec
 import HL.SExpSpec
 import HL.TypedSpec
+import HL.TypeInferenceSpec
 
 main :: IO ()
 main = defaultMain $ testGroup "Tests"
@@ -15,4 +16,5 @@ main = defaultMain $ testGroup "Tests"
   , interpTests
   , sExpTests
   , typedTests
+  , typeInferenceTests
   ]
