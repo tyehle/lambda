@@ -2,14 +2,14 @@
 
 ;; Useful Functions
 
-(type id (-> a a))
+(type id (forall a (-> a a)))
 (define (id x) x)
 
-(type const (-> a b a))
+(type const (forall (a b) (-> a b a)))
 (define (const x _) x)
 
-(type hang a)
-(define hang hang)
+(type hang (forall a a))
+(define hang ((λ (u) (u u)) (λ (u) (u u))))
 
 
 ;; Booleans
@@ -24,7 +24,7 @@
 (type #t Bool)
 (define (#t f t) t)
 
-(type if (-> Bool a a a))
+(type if (forall a (-> Bool a a a)))
 (define (if c t f)
   (c f t))
 
@@ -42,6 +42,9 @@
 
 
 ;; Numbers
+
+;(type-synonym (∀ a (Num a)) (-> (-> a a) a a))
+;(type-def (∀ a (Num a)) (-> (-> a a) a a))
 
 (type zero? (-> Num Bool))
 (define (zero? n) (n (const #f) #t))
@@ -107,9 +110,9 @@
 
 ;; Lists
 
-; Special syntax [a] is internally changed to (List a)
-;(struct (∀ a [a])
-;  [Cons a [a]]
+; Special syntax [a] is internally changed to (List a)?
+;(struct (∀ a (List a))
+;  [Cons a (List a)]
 ;  [Empty])
 
 (type Cons (∀ a [a]))
@@ -119,38 +122,38 @@
 (define Empty (λ (c e) e))
 
 
-(type head (-> [a] a))
+(type head (∀ a (-> [a] a)))
 (define (head l)
   (l (λ (h t) h) hang))
 
-(type tail (-> [a] [a]))
+(type tail (∀ a (-> [a] [a])))
 (define (tail l)
   (l (λ (h t) t) hang))
 
-(type null? (-> [a] Bool))
+(type null? (∀ a (-> [a] Bool)))
 (define (null? l)
   (l (λ (_ _) #f) #t))
 
-(type pair? (-> [a] Bool))
+(type pair? (∀ a (-> [a] Bool)))
 (define (pair? l)
   (not (null? l)))
 
-(type foldl (-> (-> b a b) b [a] b))
+(type foldl (∀ (a b) (-> (-> b a b) b [a] b)))
 (define (foldl fn acc xs)
   (xs (λ (h t) (foldl fn (fn acc h) t))
       acc))
 
-(type foldr (-> (-> a b b) b [a] b))
+(type foldr (∀ (a b) (-> (-> a b b) b [a] b)))
 (define (foldr fn acc xs)
   (xs (λ (h t) (fn h (foldr fn acc t)))
       acc))
 
-(type map (-> (-> a b) [a] [b]))
+(type map (∀ (a b) (-> (-> a b) [a] [b])))
 (define (map f xs)
   (xs (λ (h t) (Cons (f h) (map f t)))
       Empty))
 
-(type take (-> Num [a] [a]))
+(type take (∀ a (-> Num [a] [a])))
 (define (take n l)
   (l (λ (h t) (if (zero? n)
                   Empty

@@ -1,5 +1,6 @@
 module HL.Typed where
 
+import HL.Type (PolyType(..), KType(..), Kind(..))
 import HL.SExp
 import Pretty
 
@@ -14,21 +15,17 @@ import Text.Read (readMaybe)
 data Program = Program [Definition] Exp deriving (Eq, Show)
 
 data Definition = Def String Exp
-                | TAnn String QType
+                | TAnn String PolyType
                 -- | Struct QType [Type]
                 -- | TDef QType Type
                 -- | TSyn QType Type
                 deriving (Eq, Show)
 
-data QType = Forall [String] Type deriving (Eq, Show)
-
-type Type = SExp
-
 data Exp = Var String
 
          | Num Int
 
-         | EAnn Exp Type
+         | EAnn Exp PolyType
 
          | Lambda [String] Exp
          | Let [(String, Exp)] Exp
@@ -135,7 +132,7 @@ toDef bad = Left $ message "definition" bad
 
 
 toAnn :: SExp -> Either String Definition
-toAnn (Node [Leaf "type", Leaf name, typ]) = TAnn name <$> toQType typ
+toAnn (Node [Leaf "type", Leaf name, typ]) = TAnn name <$> toPolyType typ
 toAnn bad = Left $ message "type annotation" bad
 
 
@@ -159,20 +156,33 @@ toAnn bad = Left $ message "type annotation" bad
 -- toTSyn bad = Left $ message "type-synonym" bad
 
 
-toQType :: SExp -> Either String QType
-toQType t@(Node [Leaf kw, tvars, typ])
-  | isForall = Forall <$> toTVars tvars <*> toType typ
-  | otherwise = Forall [] <$> toType t
+toPolyType :: SExp -> Either String PolyType
+toPolyType t@(Node [Leaf kw, tvars, typ])
+  | isForall = Forall <$> toTVars tvars <*> toKType typ
+  | otherwise = Forall [] <$> toKType t
   where
     isForall = kw == "∀" || kw == "V" || kw == "forall"
     toTVars (Node vars) = mapM toIdent vars
     toTVars l@(Leaf _) = pure <$> toIdent l
-toQType t = Forall [] <$> toType t
+toPolyType t = Forall [] <$> toKType t
 
-toType :: SExp -> Either String Type
-toType l@(Leaf _) = Leaf <$> toIdent l
-toType (Node [l@Leaf{}]) = (\inner -> Node [Leaf "List", Leaf inner]) <$> toIdent l
-toType (Node ts) = Node <$> mapM toType ts
+
+{-
+(∀ () ())
+(∀ (m a) (m a))  |-->  PolyType [m, a] $ TApp U (TLeaf U m) (TLeaf U a)
+(∀ (t m a) (-> (m a) (t m a)))  |-->  PolyType [t, m, a] $
+    TApp U function
+           (TApp U (TLeaf U m) (TLeaf U a))
+           (TApp U (TApp U (TLeaf U t) (TLeaf U m))
+                   (TLeaf U a))
+-}
+
+toKType :: SExp -> Either String KType
+toKType l@(Leaf _) = TLeaf KUnknown <$> toIdent l
+toKType bad@(Node []) = Left $ message "type" bad
+toKType (Node ts@(_:_)) = do
+  types <- mapM toKType ts
+  return $ foldl1 (TApp KUnknown) types
 
 
 toExpr :: SExp -> Either String Exp
@@ -195,7 +205,7 @@ toExpr (Node []) = Left "Illegal empty expression"
 
 
 toEAnn :: SExp -> Either String Exp
-toEAnn (Node [Leaf "type", expr, typ]) = EAnn <$> toExpr expr <*> toType typ
+toEAnn (Node [Leaf "type", expr, typ]) = EAnn <$> toExpr expr <*> toPolyType typ
 toEAnn bad = Left $ message "type annotation" bad
 
 

@@ -4,6 +4,7 @@ import Test.Tasty
 import Test.Tasty.HUnit
 import Text.Parsec (parse)
 
+import HL.Type
 import HL.Typed
 import HL.SExp
 
@@ -17,8 +18,8 @@ typedTests = testGroup "Typed Tests"
   , lambdaTests
   , eannTests
   , exprTests
-  , typeTests
-  , qtypeTests
+  , kTypeTests
+  , polyTypeTests
   -- , structTests
   , annTests
   , defTests
@@ -81,7 +82,9 @@ lambdaTests = testGroup "Lambda Tests"
 
 eannTests :: TestTree
 eannTests = testGroup "EAnn Tests"
-  [ testFromString 1 toEAnn "(type x Num)" $ Right (EAnn (Var "x") (Leaf "Num"))
+  [ testFromString 1 toEAnn "(type x Num)" $
+      Right (EAnn (Var "x")
+                  (Forall [] (TLeaf k "Num")))
   , testFromString 2 toEAnn "(type asdf)" $ Left "Invalid type annotation (type asdf)"
   ]
 
@@ -95,24 +98,26 @@ exprTests = testGroup "Exp Tests"
   , testFromString 6 toExpr "()" $ Left "Illegal empty expression"
   ]
 
-typeTests :: TestTree
-typeTests = testGroup "Type Tests"
-  [ testFromString 1 toType "->" $ Right (Leaf "->")
-  , testFromString 2 toType "12" $ Left "Invalid identifier 12"
-  , testFromString 3 toType "()" $ Right (Node [])
-  , testFromString 4 toType "(List a)" $ Right (Node [Leaf "List", Leaf "a"])
+kTypeTests :: TestTree
+kTypeTests = testGroup "Type Tests"
+  [ testFromString 1 toKType "->" $ Right (TLeaf k "->")
+  , testFromString 2 toKType "12" $ Left "Invalid identifier 12"
+  , testFromString 3 toKType "()" $ Left "Invalid type ()"
+  , testFromString 4 toKType "(List a)" $ Right (TApp k (TLeaf k "List") (TLeaf k "a"))
   ]
 
-qtypeTests :: TestTree
-qtypeTests = testGroup "Qualified Type Tests"
-  [ testFromString 1 toQType "Bool" $ Right (Forall [] (Leaf "Bool"))
-  , testFromString 2 toQType "12" $ Left "Invalid identifier 12"
-  , testFromString 3 toQType "(List a)" $ Right (Forall [] (Node [Leaf "List", Leaf "a"]))
-  , testFromString 4 toQType "(forall a a)" $ Right (Forall ["a"] (Leaf "a"))
-  , testFromString 5 toQType "(V (a) Bool)" $ Right (Forall ["a"] (Leaf "Bool"))
-  , testFromString 6 toQType "(∀ (a b) (-> a b))" $
-      Right (Forall ["a", "b"] (Node [Leaf "->", Leaf "a", Leaf "b"]))
-  , testFromString 7 toQType "(∀ V V)" $ Left "Invalid identifier V"
+polyTypeTests :: TestTree
+polyTypeTests = testGroup "Qualified Type Tests"
+  [ testFromString 1 toPolyType "Bool" $ Right (Forall [] (TLeaf k "Bool"))
+  , testFromString 2 toPolyType "12" $ Left "Invalid identifier 12"
+  , testFromString 3 toPolyType "(List a)" $
+      Right (Forall [] (TApp k (TLeaf k "List") (TLeaf k "a")))
+  , testFromString 4 toPolyType "(forall a a)" $ Right (Forall ["a"] (TLeaf k "a"))
+  , testFromString 5 toPolyType "(V (a) Bool)" $ Right (Forall ["a"] (TLeaf k "Bool"))
+  , testFromString 6 toPolyType "(∀ (a b) (-> a b))" $
+      Right (Forall ["a", "b"] (TApp k (TApp k (TLeaf k "->") (TLeaf k "a"))
+                                       (TLeaf k "b")))
+  , testFromString 7 toPolyType "(∀ V V)" $ Left "Invalid identifier V"
   ]
 
 -- structTests :: TestTree
@@ -134,9 +139,10 @@ qtypeTests = testGroup "Qualified Type Tests"
 
 annTests :: TestTree
 annTests = testGroup "Annotation Tests"
-  [ testFromString 1 toAnn "(type foo A)" $ Right (TAnn "foo" (Forall [] (Leaf "A")))
+  [ testFromString 1 toAnn "(type foo A)" $ Right (TAnn "foo" (Forall [] (TLeaf k "A")))
   , testFromString 2 toAnn "(type id (∀ a (-> a a)))" $
-      Right (TAnn "id" (Forall ["a"] (Node [Leaf "->", Leaf "a", Leaf "a"])))
+      Right (TAnn "id" (Forall ["a"] (TApp k (TApp k (TLeaf k "->") (TLeaf k "a"))
+                                             (TLeaf k "a"))))
   , testFromString 3 toAnn "(type foo)" $ Left "Invalid type annotation (type foo)"
   ]
 

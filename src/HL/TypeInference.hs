@@ -1,8 +1,8 @@
 module HL.TypeInference where
 
+import HL.Type
 import HL.Typed
-import HL.SExp (SExp(..))
-import HL.Fresh
+import HL.Environment
 
 import Control.Monad.Trans.Except
 
@@ -14,21 +14,12 @@ import Control.Monad.Trans.Except
 -- infer (Letrec name binding body) = undefined name binding >> infer body
 -- infer (Application f x) = undefined f x
 
-type Check a = ExceptT String Fresh a
+type Check a = ExceptT String (Env String PolyType) a
 
 runChecker :: Check a -> Either String a
-runChecker = defaultEvalFresh . runExceptT
+runChecker = evalEnv . runExceptT
 
-data Kind = K | KApp Kind Kind deriving (Eq, Show)
-
-infixl 1 -->
-(-->) :: Kind -> Kind -> Kind
-a --> b = KApp a b
-
-data KType = KType QType Kind deriving (Eq, Show)
--- data Type = Type String Kind deriving (Eq, Show)
-
-checkExp :: Exp -> Check KType
+checkExp :: Exp -> Check PolyType
 checkExp (Var _) = undefined
 checkExp (Num _) = return num
 checkExp (EAnn e t) = checkExp e >>= undefined t
@@ -40,18 +31,3 @@ checkExp (Application f x) = do
   fType <- checkExp f
   xType <- checkExp x
   return $ undefined fType xType
-
-monoType :: String -> Kind -> KType
-monoType name = KType (Forall [] (Leaf name))
-
-bool :: KType
-bool = monoType "Bool" K
-
-list :: KType
-list = monoType "List" (K --> K)
-
-num :: KType
-num = monoType "Num" K
-
-function :: KType
-function = monoType "->" (K --> K --> K)
