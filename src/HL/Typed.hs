@@ -182,7 +182,7 @@ toKType l@(Leaf _) = TLeaf KUnknown <$> toIdent l
 toKType bad@(Node []) = Left $ message "type" bad
 toKType (Node ts@(_:_)) = do
   types <- mapM toKType ts
-  return $ foldl1 (TApp KUnknown) types
+  return $ foldl1 TApp types
 
 
 toExpr :: SExp -> Either String Exp

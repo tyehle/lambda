@@ -103,7 +103,7 @@ kTypeTests = testGroup "Type Tests"
   [ testFromString 1 toKType "->" $ Right (TLeaf k "->")
   , testFromString 2 toKType "12" $ Left "Invalid identifier 12"
   , testFromString 3 toKType "()" $ Left "Invalid type ()"
-  , testFromString 4 toKType "(List a)" $ Right (TApp k (TLeaf k "List") (TLeaf k "a"))
+  , testFromString 4 toKType "(List a)" $ Right (TApp (TLeaf k "List") (TLeaf k "a"))
   ]
 
 polyTypeTests :: TestTree
@@ -111,11 +111,11 @@ polyTypeTests = testGroup "Qualified Type Tests"
   [ testFromString 1 toPolyType "Bool" $ Right (Forall [] (TLeaf k "Bool"))
   , testFromString 2 toPolyType "12" $ Left "Invalid identifier 12"
   , testFromString 3 toPolyType "(List a)" $
-      Right (Forall [] (TApp k (TLeaf k "List") (TLeaf k "a")))
+      Right (Forall [] (TApp (TLeaf k "List") (TLeaf k "a")))
   , testFromString 4 toPolyType "(forall a a)" $ Right (Forall ["a"] (TLeaf k "a"))
   , testFromString 5 toPolyType "(V (a) Bool)" $ Right (Forall ["a"] (TLeaf k "Bool"))
   , testFromString 6 toPolyType "(∀ (a b) (-> a b))" $
-      Right (Forall ["a", "b"] (TApp k (TApp k (TLeaf k "->") (TLeaf k "a"))
+      Right (Forall ["a", "b"] (TApp (TApp (TLeaf k "->") (TLeaf k "a"))
                                        (TLeaf k "b")))
   , testFromString 7 toPolyType "(∀ V V)" $ Left "Invalid identifier V"
   ]
@@ -141,7 +141,7 @@ annTests :: TestTree
 annTests = testGroup "Annotation Tests"
   [ testFromString 1 toAnn "(type foo A)" $ Right (TAnn "foo" (Forall [] (TLeaf k "A")))
   , testFromString 2 toAnn "(type id (∀ a (-> a a)))" $
-      Right (TAnn "id" (Forall ["a"] (TApp k (TApp k (TLeaf k "->") (TLeaf k "a"))
+      Right (TAnn "id" (Forall ["a"] (TApp (TApp (TLeaf k "->") (TLeaf k "a"))
                                              (TLeaf k "a"))))
   , testFromString 3 toAnn "(type foo)" $ Left "Invalid type annotation (type foo)"
   ]

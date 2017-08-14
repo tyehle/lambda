@@ -1,9 +1,13 @@
 module HL.Type where
 
 
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
+
+
 data PolyType = Forall [String] KType deriving (Eq, Show)
 
-data KType = TApp Kind KType KType
+data KType = TApp KType KType
            | TLeaf Kind String
            deriving (Eq, Show)
 
@@ -19,25 +23,10 @@ o = Concrete
 k :: Kind
 k = KUnknown
 
-inferKinds :: [PolyType] -> PolyType -> PolyType
-inferKinds _ _ = undefined
-
-
-
-monoType :: Kind -> String -> PolyType
-monoType kind name = Forall [] $ TLeaf kind name
-
-bool :: PolyType
-bool = monoType o "Bool"
-
-list :: PolyType
-list = monoType (o ~> o) "List"
-
-num :: PolyType
-num = monoType o "Num"
-
--- unit :: PolyType
--- unit = monoType o "Unit"
-
-function :: PolyType
-function = monoType (o ~> o ~> o) "->"
+builtinKinds :: Map String Kind
+builtinKinds = Map.fromList [ ("Bool", o)
+                            , ("List", o ~> o)
+                            , ("Num", o)
+                            , ("->", o ~> o ~> o)
+                            -- , ("Unit", o)
+                            ]
