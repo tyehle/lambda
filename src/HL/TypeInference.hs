@@ -41,16 +41,26 @@ inferKind (Forall tVars kType) = do
       case aBinding of
         KFree -> do
           kb' <- resolve kb
-          when (kb' /= ka) $
-            if ka `occursIn` kb'
-            then throwE $ "Cannot build infine kind " ++ show ka ++ " := " ++ show kb'
-            else lift $ set aName kb'
+          when (kb' /= ka) $ do
+            occurs <- ka `occursIn` kb'
+            if occurs
+              then throwE $ "Cannot build infine kind " ++ show ka ++ " := " ++ show kb'
+              else lift $ set aName kb'
         ka' -> unify ka' kb
     unify ka kb@KVar{} = unify kb ka
     unify Concrete Concrete = return ()
     unify (KApp af ax) (KApp bf bx) = unify af bf >> unify ax bx
     unify a b = throwE $ "Cannot unify " ++ show a ++ " with " ++ show b
-    occursIn ka kb = undefined
+    _ `occursIn` KFree = return False
+    _ `occursIn` Concrete = return False
+    ka `occursIn` (KApp bf bx) = do
+      inF <- ka `occursIn` bf
+      inX <- ka `occursIn` bx
+      return $ inF || inX
+    ka `occursIn` kb@(KVar bName) | ka == kb = return True
+                                  | otherwise = do
+      bound <- lookupKind bName
+      ka `occursIn` bound
     lookupKind name = do
       bound <- lift $ get name
       maybe (throwE ("Unbound type variable: " ++ show name)) return bound
