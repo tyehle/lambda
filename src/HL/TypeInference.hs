@@ -4,7 +4,7 @@ import HL.Type
 import HL.Typed
 import HL.Environment
 
-import Data.Map as Map (empty)
+import qualified Data.Map as Map (empty, map)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans (lift)
 
@@ -18,20 +18,18 @@ import Control.Monad.Trans (lift)
 
 type Check a = ExceptT String (Env String PolyType) a
 
-
-inferKinds :: PolyType -> ExceptT String (Env String Kind) PolyType
-inferKinds (Forall tVars kType) = do
+inferKind :: PolyType -> ExceptT String (Env String (Maybe Kind)) Kind
+inferKind (Forall tVars kType) = do
   -- Add the type variables as fresh vars to the environment
-  mapM_ (lift . flip set KUnknown) tVars
-  return undefined
+  mapM_ (lift . flip set Nothing) tVars
+  inferTKind kType
   where
-    walkKType (TLeaf kind name) = undefined
-    walkKType (TApp f x) = undefined
+    inferTKind t = undefined
 
-test :: Either String PolyType
-test = flip evalEnv builtinKinds . runExceptT $ infered
+test :: Either String Kind
+test = flip evalEnv (Map.map Just builtinKinds) . runExceptT $ infered
   where
-    infered = inferKinds (Forall ["a"] (TApp (TLeaf k "List") (TLeaf k "a")))
+    infered = inferKind (Forall ["a"] (TApp (TLeaf "List") (TLeaf "a")))
 
 
 runChecker :: Check a -> Either String a
@@ -39,7 +37,7 @@ runChecker = flip evalEnv Map.empty . runExceptT
 
 checkExp :: Exp -> Check PolyType
 checkExp (Var _) = undefined
-checkExp (Num _) = return $ Forall [] $ TLeaf o "Num"
+checkExp (Num _) = return $ Forall [] $ TLeaf "Num"
 checkExp (EAnn e t) = checkExp e >>= undefined t
 checkExp (Lambda args body) = undefined args >> checkExp body
 checkExp (Let bindings body) = undefined bindings >> checkExp body

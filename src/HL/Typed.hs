@@ -1,6 +1,6 @@
 module HL.Typed where
 
-import HL.Type (PolyType(..), KType(..), Kind(..))
+import HL.Type (PolyType(..), Type(..))
 import HL.SExp
 import Pretty
 
@@ -177,8 +177,8 @@ toPolyType t = Forall [] <$> toKType t
                    (TLeaf U a))
 -}
 
-toKType :: SExp -> Either String KType
-toKType l@(Leaf _) = TLeaf KUnknown <$> toIdent l
+toKType :: SExp -> Either String Type
+toKType l@(Leaf _) = TLeaf <$> toIdent l
 toKType bad@(Node []) = Left $ message "type" bad
 toKType (Node ts@(_:_)) = do
   types <- mapM toKType ts

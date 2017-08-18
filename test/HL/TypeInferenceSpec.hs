@@ -19,8 +19,8 @@ testExp n expr expected = testCase (show n) assertion
 
 literalTests :: TestTree
 literalTests = testGroup "Literal Tests"
-  [ testExp 1 (Typed.Num 1) (Forall [] (TLeaf o "Num"))
+  [ testExp 1 (Typed.Num 1) (Forall [] (TLeaf "Num"))
   , testExp 2 (Typed.Lambda ["x"] (Typed.Var "x"))
-      (Forall ["x"] (TApp (TApp (TLeaf k "->") (TLeaf k "x"))
-                            (TLeaf k "x")))
+      (Forall ["x"] (TApp (TApp (TLeaf "->") (TLeaf "x"))
+                            (TLeaf "x")))
   ]
