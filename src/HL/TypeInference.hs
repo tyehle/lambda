@@ -4,7 +4,7 @@ import HL.Type
 import HL.Typed
 import HL.Environment
 
-import qualified Data.Map as Map (empty, map)
+import qualified Data.Map as Map (empty)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans (lift)
 
@@ -18,16 +18,31 @@ import Control.Monad.Trans (lift)
 
 type Check a = ExceptT String (Env String PolyType) a
 
-inferKind :: PolyType -> ExceptT String (Env String (Maybe Kind)) Kind
+inferKind :: PolyType -> ExceptT String (Env String Kind) Kind
 inferKind (Forall tVars kType) = do
   -- Add the type variables as fresh vars to the environment
-  mapM_ (lift . flip set Nothing) tVars
+  mapM_ (lift . flip set KFree) tVars
   inferTKind kType
   where
-    inferTKind t = undefined
+    inferTKind (TLeaf name) = do
+      bound <- lift $ get name
+      maybe (throwE "Unbound type variable") return bound
+    inferTKind (TApp f a) = do
+      freshName <- undefined
+      let resultKind = KVar freshName
+      lift $ set freshName KFree
+      ak <- inferTKind a
+      fk <- inferTKind f
+      unify (KApp ak resultKind) fk
+      return resultKind
+    resolve (KVar name) = do
+      bound <- lift $ get name
+      maybe (throwE "Unbound type variable") resolve bound
+    resolve otherKind = return otherKind
+    unify ka kb = undefined
 
 test :: Either String Kind
-test = flip evalEnv (Map.map Just builtinKinds) . runExceptT $ infered
+test = flip evalEnv builtinKinds . runExceptT $ infered
   where
     infered = inferKind (Forall ["a"] (TApp (TLeaf "List") (TLeaf "a")))
 

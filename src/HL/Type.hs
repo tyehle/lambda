@@ -11,7 +11,7 @@ data Type = TApp Type Type
           | TLeaf String
           deriving (Eq, Show)
 
-data Kind = Concrete | KApp Kind Kind | KVar String deriving (Eq, Show)
+data Kind = Concrete | KApp Kind Kind | KFree | KVar String deriving (Eq, Show)
 
 infixl 1 ~>
 (~>) :: Kind -> Kind -> Kind
