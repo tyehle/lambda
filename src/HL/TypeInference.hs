@@ -7,6 +7,7 @@ import HL.Environment
 import qualified Data.Map as Map (empty)
 import Control.Monad.Trans.Except
 import Control.Monad.Trans (lift)
+import Control.Monad (when)
 
 -- infer :: Exp -> Maybe Type
 -- infer (Var x) = undefined x
@@ -22,24 +23,37 @@ inferKind :: PolyType -> ExceptT String (Env String Kind) Kind
 inferKind (Forall tVars kType) = do
   -- Add the type variables as fresh vars to the environment
   mapM_ (lift . flip set KFree) tVars
-  inferTKind kType
+  inferMonoKind kType >>= resolve
   where
-    inferTKind (TLeaf name) = do
-      bound <- lift $ get name
-      maybe (throwE "Unbound type variable") return bound
-    inferTKind (TApp f a) = do
+    inferMonoKind (TLeaf name) = lookupKind name
+    inferMonoKind (TApp f a) = do
       freshName <- undefined
       let resultKind = KVar freshName
       lift $ set freshName KFree
-      ak <- inferTKind a
-      fk <- inferTKind f
+      ak <- inferMonoKind a
+      fk <- inferMonoKind f
       unify (KApp ak resultKind) fk
       return resultKind
-    resolve (KVar name) = do
-      bound <- lift $ get name
-      maybe (throwE "Unbound type variable") resolve bound
+    resolve (KVar name) = lookupKind name >>= resolve
     resolve otherKind = return otherKind
-    unify ka kb = undefined
+    unify ka@(KVar aName) kb = do
+      aBinding <- lookupKind aName
+      case aBinding of
+        KFree -> do
+          kb' <- resolve kb
+          when (kb' /= ka) $
+            if ka `occursIn` kb'
+            then throwE $ "Cannot build infine kind " ++ show ka ++ " := " ++ show kb'
+            else lift $ set aName kb'
+        ka' -> unify ka' kb
+    unify ka kb@KVar{} = unify kb ka
+    unify Concrete Concrete = return ()
+    unify (KApp af ax) (KApp bf bx) = unify af bf >> unify ax bx
+    unify a b = throwE $ "Cannot unify " ++ show a ++ " with " ++ show b
+    occursIn ka kb = undefined
+    lookupKind name = do
+      bound <- lift $ get name
+      maybe (throwE ("Unbound type variable: " ++ show name)) return bound
 
 test :: Either String Kind
 test = flip evalEnv builtinKinds . runExceptT $ infered
