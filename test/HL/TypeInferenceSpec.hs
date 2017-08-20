@@ -3,42 +3,47 @@ module HL.TypeInferenceSpec (typeInferenceTests) where
 import Test.Tasty
 import Test.Tasty.HUnit
 
+import HL.SExp (SExp)
 import HL.Type
 import HL.TypeInference
 import qualified HL.Typed as Typed
 
-import qualified Data.Map as Map
-import Control.Monad ((>=>))
 
 typeInferenceTests :: TestTree
 typeInferenceTests = testGroup "Type Inference Tests"
-  [ kindInferenceTests
+  [ fixArrowTests
+  , kindInferenceTests
   -- , literalTests
   ]
 
-testExp :: Int -> Typed.Exp -> PolyType -> TestTree
-testExp n expr expected = testCase (show n) assertion
-  where
-    assertion = runInfer Map.empty (checkExp expr) @?= Right expected
+parseSExp :: String -> Either String SExp
+parseSExp input = head <$> Typed.fromFile "input" input
 
-literalTests :: TestTree
-literalTests = testGroup "Literal Tests"
-  [ testExp 1 (Typed.Num 1) (Forall [] (TLeaf "Num"))
-  , testExp 2 (Typed.Lambda ["x"] (Typed.Var "x"))
-      (Forall ["x"] (TApp (TApp (TLeaf "->") (TLeaf "x"))
-                            (TLeaf "x")))
+
+testArrow :: Int -> String -> String -> TestTree
+testArrow n typeStr expectedStr = testCase (show n) (fixed @?= expected)
+  where
+    fixed = fixArrowTypes <$> (parseSExp typeStr >>= Typed.toType)
+    expected = parseSExp expectedStr >>= Typed.toType
+
+fixArrowTests :: TestTree
+fixArrowTests = testGroup "Fix Arrow Types"
+  [ testArrow 1 "Num" "Num"
+  , testArrow 2 "(List a)" "(List a)"
+  , testArrow 3 "(-> a b)" "((-> a) b)"
+  , testArrow 4 "(-> a b c)" "((-> a) ((-> b) c))"
+  , testArrow 5 "(-> a)" "(-> a)"
+  , testArrow 6 "(-> (List a))" "(-> (List a))"
+  , testArrow 7 "(-> (-> a b))" "(-> ((-> a) b))"
+  , testArrow 8 "(List (-> a b c))" "(List ((-> a) ((-> b) c)))"
+  , testArrow 9 "(-> (-> a b) (-> c d))" "((-> ((-> a) b)) ((-> c) d))"
   ]
 
-parsePolyType :: String -> Either String PolyType
-parsePolyType = parse >=> Typed.toPolyType
-  where
-    parse s = head <$> Typed.fromFile "input" s
 
 testKindInf :: Int -> String -> Kind -> TestTree
-testKindInf n typeStr kind = testCase (show n) assertion
+testKindInf n typeStr kind = testCase (show n) (infered @?= Right kind)
   where
-    parsed = parsePolyType typeStr
-    assertion = (parsed >>= inferKind) @?= Right kind
+    infered = parseSExp typeStr >>= Typed.toPolyType >>= inferKind
 
 kindInferenceTests :: TestTree
 kindInferenceTests = testGroup "Kind Inference"

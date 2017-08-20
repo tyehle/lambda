@@ -1,6 +1,6 @@
 module HL.Typed where
 
-import HL.Type (PolyType(..), Type(..))
+import HL.Type (PolyType(..), Type(..), fixArrowTypes)
 import HL.SExp
 import Pretty
 
@@ -158,30 +158,20 @@ toAnn bad = Left $ message "type annotation" bad
 
 toPolyType :: SExp -> Either String PolyType
 toPolyType t@(Node [Leaf kw, tvars, typ])
-  | isForall = Forall <$> toTVars tvars <*> toKType typ
-  | otherwise = Forall [] <$> toKType t
+  | isForall = Forall <$> toTVars tvars <*> (fixArrowTypes <$> toType typ)
+  | otherwise = Forall [] . fixArrowTypes <$> toType t
   where
     isForall = kw == "∀" || kw == "V" || kw == "forall"
     toTVars (Node vars) = mapM toIdent vars
     toTVars l@(Leaf _) = pure <$> toIdent l
-toPolyType t = Forall [] <$> toKType t
+toPolyType t = Forall [] . fixArrowTypes <$> toType t
 
 
-{-
-(∀ () ())
-(∀ (m a) (m a))  |-->  PolyType [m, a] $ TApp U (TLeaf U m) (TLeaf U a)
-(∀ (t m a) (-> (m a) (t m a)))  |-->  PolyType [t, m, a] $
-    TApp U function
-           (TApp U (TLeaf U m) (TLeaf U a))
-           (TApp U (TApp U (TLeaf U t) (TLeaf U m))
-                   (TLeaf U a))
--}
-
-toKType :: SExp -> Either String Type
-toKType l@(Leaf _) = TLeaf <$> toIdent l
-toKType bad@(Node []) = Left $ message "type" bad
-toKType (Node ts@(_:_)) = do
-  types <- mapM toKType ts
+toType :: SExp -> Either String Type
+toType l@(Leaf _) = TLeaf <$> toIdent l
+toType bad@(Node []) = Left $ message "type" bad
+toType (Node ts@(_:_)) = do
+  types <- mapM toType ts
   return $ foldl1 TApp types
 
 

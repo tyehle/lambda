@@ -13,7 +13,7 @@ data Type = TApp Type Type
 
 data Kind = Concrete | KApp Kind Kind | KFree | KVar String deriving (Eq, Show)
 
-infixl 1 ~>
+infixr 1 ~>
 (~>) :: Kind -> Kind -> Kind
 a ~> b = KApp a b
 
@@ -27,3 +27,17 @@ builtinKinds = Map.fromList [ ("Bool", o)
                             , ("->", o ~> o ~> o)
                             -- , ("Unit", o)
                             ]
+
+fixArrowTypes :: Type -> Type
+fixArrowTypes t@TLeaf{} = t
+fixArrowTypes (TApp f@(TLeaf "->") x) = TApp f (fixArrowTypes x)
+fixArrowTypes (TApp f x)
+  | isArrow f = foldl combine (fixArrowTypes x) paired
+  | otherwise = TApp (fixArrowTypes f) (fixArrowTypes x)
+  where
+    isArrow (TLeaf name) = name == "->"
+    isArrow (TApp f' _) = isArrow f'
+    revFlatten l@TLeaf{} = [l]
+    revFlatten (TApp f' x') = x' : revFlatten f'
+    paired = map (TApp (TLeaf "->")) . init . revFlatten $ f
+    combine = flip TApp

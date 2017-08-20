@@ -18,7 +18,7 @@ typedTests = testGroup "Typed Tests"
   , lambdaTests
   , eannTests
   , exprTests
-  , kTypeTests
+  , typeTests
   , polyTypeTests
   -- , structTests
   , annTests
@@ -98,12 +98,12 @@ exprTests = testGroup "Exp Tests"
   , testFromString 6 toExpr "()" $ Left "Illegal empty expression"
   ]
 
-kTypeTests :: TestTree
-kTypeTests = testGroup "Type Tests"
-  [ testFromString 1 toKType "->" $ Right (TLeaf "->")
-  , testFromString 2 toKType "12" $ Left "Invalid identifier 12"
-  , testFromString 3 toKType "()" $ Left "Invalid type ()"
-  , testFromString 4 toKType "(List a)" $ Right (TApp (TLeaf "List") (TLeaf "a"))
+typeTests :: TestTree
+typeTests = testGroup "Type Tests"
+  [ testFromString 1 toType "->" $ Right (TLeaf "->")
+  , testFromString 2 toType "12" $ Left "Invalid identifier 12"
+  , testFromString 3 toType "()" $ Left "Invalid type ()"
+  , testFromString 4 toType "(List a)" $ Right (TApp (TLeaf "List") (TLeaf "a"))
   ]
 
 polyTypeTests :: TestTree

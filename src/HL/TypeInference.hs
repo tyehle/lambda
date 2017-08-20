@@ -35,8 +35,8 @@ inferMonoKind :: Type -> Infer Kind Kind
 inferMonoKind (TLeaf name) = return $ KVar name
 inferMonoKind (TApp f a) = do
   freshName <- freshFrom "resultKind"
-  let resultKind = KVar freshName
   set freshName KFree
+  let resultKind = KVar freshName
   ak <- inferMonoKind a
   fk <- inferMonoKind f
   unify (KApp ak resultKind) fk
