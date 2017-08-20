@@ -1,8 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module HL.Environment
-  ( Env
-  , evalEnv
+  ( Env, EnvT
+  , evalEnv, evalEnvT
   , get, set
   ) where
 

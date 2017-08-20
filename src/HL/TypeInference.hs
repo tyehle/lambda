@@ -1,12 +1,15 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module HL.TypeInference where
 
 import HL.Type
 import HL.Typed
-import HL.Environment
+import HL.Environment (EnvT, evalEnvT)
+import HL.Fresh (Fresh, defaultEvalFresh)
+import HL.MonadClasses (freshFrom, get, set)
 
-import qualified Data.Map as Map (empty)
+import Data.Map (Map)
 import Control.Monad.Trans.Except
-import Control.Monad.Trans (lift)
 import Control.Monad (when)
 
 -- infer :: Exp -> Maybe Type
@@ -17,64 +20,69 @@ import Control.Monad (when)
 -- infer (Letrec name binding body) = undefined name binding >> infer body
 -- infer (Application f x) = undefined f x
 
-type Check a = ExceptT String (Env String PolyType) a
+type Infer s = ExceptT String (EnvT String s Fresh)
 
-inferKind :: PolyType -> ExceptT String (Env String Kind) Kind
-inferKind (Forall tVars kType) = do
+runInfer :: Map String s -> Infer s a -> Either String a
+runInfer env = defaultEvalFresh . flip evalEnvT env . runExceptT
+
+inferKind :: PolyType -> Either String Kind
+inferKind (Forall tVars kType) = runInfer builtinKinds $ do
   -- Add the type variables as fresh vars to the environment
-  mapM_ (lift . flip set KFree) tVars
+  mapM_ (`set` KFree) tVars
   inferMonoKind kType >>= resolve
-  where
-    inferMonoKind (TLeaf name) = lookupKind name
-    inferMonoKind (TApp f a) = do
-      freshName <- undefined
-      let resultKind = KVar freshName
-      lift $ set freshName KFree
-      ak <- inferMonoKind a
-      fk <- inferMonoKind f
-      unify (KApp ak resultKind) fk
-      return resultKind
-    resolve (KVar name) = lookupKind name >>= resolve
-    resolve otherKind = return otherKind
-    unify ka@(KVar aName) kb = do
-      aBinding <- lookupKind aName
-      case aBinding of
-        KFree -> do
-          kb' <- resolve kb
-          when (kb' /= ka) $ do
-            occurs <- ka `occursIn` kb'
-            if occurs
-              then throwE $ "Cannot build infine kind " ++ show ka ++ " := " ++ show kb'
-              else lift $ set aName kb'
-        ka' -> unify ka' kb
-    unify ka kb@KVar{} = unify kb ka
-    unify Concrete Concrete = return ()
-    unify (KApp af ax) (KApp bf bx) = unify af bf >> unify ax bx
-    unify a b = throwE $ "Cannot unify " ++ show a ++ " with " ++ show b
-    _ `occursIn` KFree = return False
-    _ `occursIn` Concrete = return False
-    ka `occursIn` (KApp bf bx) = do
-      inF <- ka `occursIn` bf
-      inX <- ka `occursIn` bx
-      return $ inF || inX
-    ka `occursIn` kb@(KVar bName) | ka == kb = return True
-                                  | otherwise = do
-      bound <- lookupKind bName
-      ka `occursIn` bound
-    lookupKind name = do
-      bound <- lift $ get name
-      maybe (throwE ("Unbound type variable: " ++ show name)) return bound
+
+inferMonoKind :: Type -> Infer Kind Kind
+inferMonoKind (TLeaf name) = return $ KVar name
+inferMonoKind (TApp f a) = do
+  freshName <- freshFrom "resultKind"
+  let resultKind = KVar freshName
+  set freshName KFree
+  ak <- inferMonoKind a
+  fk <- inferMonoKind f
+  unify (KApp ak resultKind) fk
+  return resultKind
+
+resolve :: Kind -> Infer Kind Kind
+resolve (KVar name) = lookupEnv name >>= resolve
+resolve otherKind = return otherKind
+
+unify :: Kind -> Kind -> Infer Kind ()
+unify ka@(KVar aName) kb = do
+  aBinding <- lookupEnv aName
+  case aBinding of
+    KFree -> do
+      kb' <- resolve kb
+      when (kb' /= ka) $ do
+        occurs <- ka `occursIn` kb'
+        if occurs
+          then throwE $ "Cannot build infine kind " ++ show ka ++ " := " ++ show kb'
+          else set aName kb'
+    ka' -> unify ka' kb
+unify ka kb@KVar{} = unify kb ka
+unify Concrete Concrete = return ()
+unify (KApp af ax) (KApp bf bx) = unify af bf >> unify ax bx
+unify a b = throwE $ "Cannot unify " ++ show a ++ " with " ++ show b
+
+occursIn :: Kind -> Kind -> Infer Kind Bool
+_ `occursIn` KFree = return False
+_ `occursIn` Concrete = return False
+ka `occursIn` (KApp bf bx) = do
+  inF <- ka `occursIn` bf
+  inX <- ka `occursIn` bx
+  return $ inF || inX
+ka `occursIn` kb@(KVar bName) | ka == kb = return True
+                              | otherwise = do
+  bound <- lookupEnv bName
+  ka `occursIn` bound
+
+lookupEnv :: String -> Infer a a
+lookupEnv name = get name >>= maybe (throwE ("Unbound variable: " ++ show name)) return
 
 test :: Either String Kind
-test = flip evalEnv builtinKinds . runExceptT $ infered
-  where
-    infered = inferKind (Forall ["a"] (TApp (TLeaf "List") (TLeaf "a")))
+test = inferKind (Forall ["a"] (TApp (TLeaf "List") (TLeaf "a")))
 
 
-runChecker :: Check a -> Either String a
-runChecker = flip evalEnv Map.empty . runExceptT
-
-checkExp :: Exp -> Check PolyType
+checkExp :: Exp -> Infer Type PolyType
 checkExp (Var _) = undefined
 checkExp (Num _) = return $ Forall [] $ TLeaf "Num"
 checkExp (EAnn e t) = checkExp e >>= undefined t

@@ -16,5 +16,5 @@ main = defaultMain $ testGroup "Tests"
   , interpTests
   , sExpTests
   , typedTests
-  -- , typeInferenceTests
+  , typeInferenceTests
   ]
