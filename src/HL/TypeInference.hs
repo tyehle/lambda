@@ -29,7 +29,11 @@ inferKind :: PolyType -> Either String Kind
 inferKind (Forall tVars kType) = runInfer builtinKinds $ do
   -- Add the type variables as fresh vars to the environment
   mapM_ (`set` KFree) tVars
-  inferMonoKind kType >>= resolve
+  inferMonoKind kType >>= fullLookup
+  where
+    fullLookup (KVar name) = lookupEnv name >>= fullLookup
+    fullLookup (KApp f x) = KApp <$> fullLookup f <*> fullLookup x
+    fullLookup other = return other
 
 inferMonoKind :: Type -> Infer Kind Kind
 inferMonoKind (TLeaf name) = return $ KVar name
@@ -43,7 +47,11 @@ inferMonoKind (TApp f a) = do
   return resultKind
 
 resolve :: Kind -> Infer Kind Kind
-resolve (KVar name) = lookupEnv name >>= resolve
+resolve k@(KVar name) = do
+  binding <- lookupEnv name
+  case binding of
+    KFree -> return k
+    k' -> resolve k'
 resolve otherKind = return otherKind
 
 unify :: Kind -> Kind -> Infer Kind ()
