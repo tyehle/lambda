@@ -38,12 +38,12 @@ inferKind (Forall tVars kType) = runInfer builtinKinds $ do
 inferMonoKind :: Type -> Infer Kind Kind
 inferMonoKind (TLeaf name) = return $ KVar name
 inferMonoKind (TApp f a) = do
-  freshName <- freshFrom "resultKind"
+  freshName <- freshFrom "k"
   set freshName KFree
   let resultKind = KVar freshName
   ak <- inferMonoKind a
   fk <- inferMonoKind f
-  unify (KApp ak resultKind) fk
+  unify fk (KApp ak resultKind)
   return resultKind
 
 resolve :: Kind -> Infer Kind Kind
@@ -63,7 +63,7 @@ unify ka@(KVar aName) kb = do
       when (kb' /= ka) $ do
         occurs <- ka `occursIn` kb'
         if occurs
-          then throwE $ "Cannot build infine kind " ++ show ka ++ " := " ++ show kb'
+          then throwE $ "Cannot build infinite kind " ++ show ka ++ " := " ++ show kb'
           else set aName kb'
     ka' -> unify ka' kb
 unify ka kb@KVar{} = unify kb ka
